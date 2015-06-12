@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/materialListItemHeight"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="Artist Name Goes here"
+        android:id="@+id/artistNameTextView"
+        android:layout_gravity="left|center_vertical"
+        android:paddingLeft="@dimen/materialListItemSecondarySidePadding"
+        android:paddingRight="@dimen/materialListItemSecondarySidePadding" />
+
+    <ImageView
+        android:layout_width="@dimen/materialImageDimensionSquare"
+        android:layout_height="@dimen/materialImageDimensionSquare"
+        android:id="@+id/artistImageView"
+        android:src="@mipmap/ic_launcher"
+        android:layout_gravity="left|center_vertical"
+        android:contentDescription="@string/artist_image"/>
+</FrameLayout>
