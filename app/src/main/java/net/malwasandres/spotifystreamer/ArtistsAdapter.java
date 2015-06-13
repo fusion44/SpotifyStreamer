@@ -1,5 +1,6 @@
 package net.malwasandres.spotifystreamer;
 
+import android.os.Parcelable;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,6 +10,7 @@ import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import butterknife.ButterKnife;
@@ -16,10 +18,10 @@ import butterknife.InjectView;
 import kaaes.spotify.webapi.android.models.Artist;
 
 public class ArtistsAdapter extends RecyclerView.Adapter {
-    List<Artist> mArtists;
+    ArrayList<ArtistModel> mArtists;
     private ArtistClickListener mOutsideClickListener;
 
-    public ArtistsAdapter(List<Artist> artists) {
+    public ArtistsAdapter(ArrayList<ArtistModel> artists) {
         super();
         mArtists = artists;
     }
@@ -35,12 +37,12 @@ public class ArtistsAdapter extends RecyclerView.Adapter {
         mOutsideClickListener = outsideClickListener;
     }
 
-    public void add(int position, Artist artist) {
+    public void add(int position, ArtistModel artist) {
         mArtists.add(position, artist);
         notifyItemInserted(position);
     }
 
-    public void remove(Artist artist) {
+    public void remove(ArtistModel artist) {
         int position = mArtists.indexOf(artist);
         mArtists.remove(position);
         notifyItemRemoved(position);
@@ -50,7 +52,7 @@ public class ArtistsAdapter extends RecyclerView.Adapter {
         mArtists.clear();
     }
 
-    public void replaceArtists(List<Artist> artists) {
+    public void replaceArtists(ArrayList<ArtistModel> artists) {
         mArtists.clear();
         mArtists = artists;
         notifyDataSetChanged();
@@ -59,11 +61,11 @@ public class ArtistsAdapter extends RecyclerView.Adapter {
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
         ViewHolder vh = (ViewHolder) holder;
-        Artist artist = mArtists.get(position);
+        ArtistModel artist = mArtists.get(position);
         vh.artistName.setText(artist.name);
-        if(artist.images.size() > 0) {
+        if(!artist.imageUrl.equals("")) {
             Picasso.with(vh.artistImage.getContext())
-                    .load(artist.images.get(0).url)
+                    .load(artist.imageUrl)
                     .into(vh.artistImage);
         }
         holder.itemView.setTag(artist);
@@ -74,8 +76,12 @@ public class ArtistsAdapter extends RecyclerView.Adapter {
         return mArtists.size();
     }
 
+    public ArrayList<ArtistModel> getArtists() {
+        return mArtists;
+    }
+
     public interface ArtistClickListener {
-        void onArtistClick(Artist artist);
+        void onArtistClick(ArtistModel artist);
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
@@ -94,7 +100,7 @@ public class ArtistsAdapter extends RecyclerView.Adapter {
 
         @Override
         public void onClick(View view) {
-            mOutSideClickReceiver.onArtistClick((Artist) view.getTag());
+            mOutSideClickReceiver.onArtistClick((ArtistModel) view.getTag());
         }
     }
 }

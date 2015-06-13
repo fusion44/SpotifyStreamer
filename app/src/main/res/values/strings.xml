@@ -17,4 +17,5 @@
     <string name="key_spotify_playback_list">key_spotify_playback_list</string>
     <string name="artist_image">Artist image</string>
     <string name="album_cover_image">Album cover image</string>
+    <string name="key_artist_search_result">key_artist_search_result</string>
 </resources>
