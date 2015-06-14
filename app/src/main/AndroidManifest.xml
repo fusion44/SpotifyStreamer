@@ -42,6 +42,12 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="net.malwasandres.spotifystreamer.TopTenTrackActivity" />
         </activity>
+
+        <service
+            android:name=".PlaybackService"
+            android:enabled="true"
+            android:exported="true" >
+        </service>
     </application>
 
 </manifest>

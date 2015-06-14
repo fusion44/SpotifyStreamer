@@ -46,7 +46,7 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
     public void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
         state.putParcelableArrayList(
-                getActivity().getString(R.string.key_top_ten_tracks), mAdapter.getTracks());
+                getActivity().getString(R.string.key_track_list), mAdapter.getTracks());
     }
 
     @Override
@@ -54,7 +54,7 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
         super.onViewCreated(view, savedInstanceState);
         if (savedInstanceState != null) {
             ArrayList<TrackModel> m = savedInstanceState.getParcelableArrayList(
-                    getActivity().getString(R.string.key_top_ten_tracks));
+                    getActivity().getString(R.string.key_track_list));
 
             if (m != null) mAdapter.replaceTracks(m);
             setArtistTitle();
@@ -105,7 +105,6 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
         }
     }
 
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -141,8 +140,9 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
     @Override
     public void onTrackClick(TrackModel track) {
         Intent i = new Intent(getActivity(), PlaybackActivity.class);
-        i.putExtra(getString(R.string.key_spotify_playback_track_single), track.id);
-        i.putExtra(getString(R.string.key_spotify_playback_list), mAdapter.getTracks());
+        i.putExtra(getString(R.string.key_spotify_playback_track_single),
+                mAdapter.getTracks().indexOf(track));
+        i.putExtra(getString(R.string.key_track_list), mAdapter.getTracks());
         startActivity(i);
     }
 }

@@ -1,11 +1,12 @@
 package net.malwasandres.spotifystreamer;
 
-import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.net.Uri;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,12 +22,6 @@ import java.util.ArrayList;
 import butterknife.ButterKnife;
 import butterknife.InjectView;
 import butterknife.OnClick;
-import kaaes.spotify.webapi.android.SpotifyApi;
-import kaaes.spotify.webapi.android.SpotifyService;
-import kaaes.spotify.webapi.android.models.Track;
-import retrofit.Callback;
-import retrofit.RetrofitError;
-import retrofit.client.Response;
 
 
 /**
@@ -34,9 +29,10 @@ import retrofit.client.Response;
  */
 public class PlaybackActivityFragment extends Fragment {
     private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
-    private SpotifyService mSpotify;
-    private MediaPlayer mMediaPlayer;
-    private ArrayList<TrackModel> mTracks;
+
+    PlaybackService mPlaybackService;
+    Intent mPlaybackIntent;
+    private Boolean mPlaybackServiceBound = false;
 
     @OnClick(R.id.skipPreviousButton)
     public void onSkipPreviousClick() {
@@ -50,13 +46,7 @@ public class PlaybackActivityFragment extends Fragment {
 
     @OnClick(R.id.playButton)
     public void onPlayButton() {
-        if(mMediaPlayer.isPlaying()) {
-            mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
-            mMediaPlayer.pause();
-        } else {
-            mPlayButton.setImageResource(R.drawable.ic_av_pause);
-            mMediaPlayer.start();
-        }
+
     }
 
     @InjectView(R.id.playButton)
@@ -69,7 +59,7 @@ public class PlaybackActivityFragment extends Fragment {
     TextView mEndTextView;
 
     @InjectView(R.id.playbackBandNameTextView)
-    TextView mBandNameTextView;
+    TextView mArtistNameTextView;
 
     @InjectView(R.id.playbackAlbumNameTextView)
     TextView mAlbumNameTextView;
@@ -77,69 +67,64 @@ public class PlaybackActivityFragment extends Fragment {
     @InjectView(R.id.playbackAlbumImageView)
     ImageView mAlbumImageView;
 
+    private ArrayList<TrackModel> mTracks;
+    private TrackModel mCurrentTrack;
+
     public PlaybackActivityFragment() {
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mSpotify = new SpotifyApi().getService();
-        String trackId = getActivity().getIntent().getStringExtra(
-                getString(R.string.key_spotify_playback_track_single));
-        mSpotify.getTrack(trackId, new Callback<Track>() {
-            @Override
-            public void success(final Track track, Response response) {
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        loadFinished(track);
-                    }
-                });
-            }
+        Intent i = getActivity().getIntent();
+        mTracks = i.getParcelableArrayListExtra(getActivity().getString(R.string.key_track_list));
+        int trackId = getActivity().getIntent().getIntExtra(
+                getString(R.string.key_spotify_playback_track_single), -1);
 
-            @Override
-            public void failure(final RetrofitError error) {
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        onSpotifyError(error.getMessage());
-                    }
-                });
-            }
-        });
-
-        mTracks = getActivity().getIntent().getParcelableArrayListExtra(
-                getString(R.string.key_spotify_playback_list));
-    }
-
-    private void onSpotifyError(String message) {
-        Log.e(LOG_TAG, message);
+        if (trackId == -1) mCurrentTrack = mTracks.get(0);
+        else mCurrentTrack = mTracks.get(trackId);
     }
 
     @Override
-    public void onStop() {
-        if(mMediaPlayer != null) {
-            mMediaPlayer.release();
-            mMediaPlayer = null;
+    public void onStart() {
+        super.onStart();
+        if (mPlaybackIntent == null) {
+            mPlaybackIntent = new Intent(getActivity(), PlaybackService.class);
+            getActivity().bindService(mPlaybackIntent, playbackConnection, Context.BIND_AUTO_CREATE);
+            getActivity().startService(mPlaybackIntent);
         }
-        super.onStop();
     }
 
-    private void loadFinished(Track track) {
-        mBandNameTextView.setText(track.artists.get(0).name);
-        mAlbumNameTextView.setText(track.album.name);
-        if(track.album.images.size() > 0) {
-            Picasso.with(getActivity())
-                    .load(track.album.images.get(0).url)
-                    .into(mAlbumImageView);
+    @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        setupUi();
+    }
+
+    private ServiceConnection playbackConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            PlaybackService.TrackBinder binder = (PlaybackService.TrackBinder) service;
+            mPlaybackService = binder.getService();
+            mPlaybackServiceBound = true;
+            mPlaybackService.setTrackList(mTracks);
+            mPlaybackService.playTrack(mCurrentTrack);
         }
 
-        mMediaPlayer = MediaPlayer.create(getActivity(), Uri.parse(track.preview_url));
-        mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        mMediaPlayer.start();
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mPlaybackServiceBound = false;
+        }
+    };
 
-        int duration = mMediaPlayer.getDuration();
-        mEndTextView.setText(String.valueOf(duration / 1000));
+    private void setupUi() {
+        mArtistNameTextView.setText(mCurrentTrack.artistName);
+        mAlbumNameTextView.setText(mCurrentTrack.albumName);
+        if (mCurrentTrack.imageUrl != null && !mCurrentTrack.imageUrl.equals("")) {
+            Picasso.with(getActivity())
+                    .load(mCurrentTrack.imageUrl)
+                    .into(mAlbumImageView);
+        }
     }
 
     @Override

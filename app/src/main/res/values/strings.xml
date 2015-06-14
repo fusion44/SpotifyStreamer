@@ -13,8 +13,7 @@
     <string name="play_and_pause_button">Play and pause button</string>
     <string name="skip_next_button">Skip to next button</string>
     <string name="no_artist_found">No search result found. Please refine search terms.</string>
-    <string name="key_top_ten_tracks">key_top_ten_tracks</string>
-    <string name="key_spotify_playback_list">key_spotify_playback_list</string>
+    <string name="key_track_list">key_top_ten_tracks</string>
     <string name="artist_image">Artist image</string>
     <string name="album_cover_image">Album cover image</string>
     <string name="key_artist_search_result">key_artist_search_result</string>

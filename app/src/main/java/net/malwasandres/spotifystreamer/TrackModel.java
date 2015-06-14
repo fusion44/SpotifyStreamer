@@ -12,6 +12,7 @@ public class TrackModel implements Parcelable {
     public String imageUrl;
     public String artistName;
     public String albumName;
+    public String previewUrl;
 
     protected TrackModel(Parcel in) {
         id = in.readString();
@@ -19,6 +20,7 @@ public class TrackModel implements Parcelable {
         imageUrl = in.readString();
         artistName = in.readString();
         albumName = in.readString();
+        previewUrl = in.readString();
     }
 
     protected TrackModel(Track in) {
@@ -27,6 +29,7 @@ public class TrackModel implements Parcelable {
         if(in.album.images.size() > 0) imageUrl = in.album.images.get(0).url;
         if(in.artists.size() > 0) artistName = in.artists.get(0).name;
         albumName = in.album.name;
+        previewUrl = in.preview_url;
     }
 
     @Override
@@ -41,6 +44,7 @@ public class TrackModel implements Parcelable {
         dest.writeString(imageUrl);
         dest.writeString(artistName);
         dest.writeString(albumName);
+        dest.writeString(previewUrl);
     }
 
     public static final Parcelable.Creator<TrackModel> CREATOR = new Parcelable.Creator<TrackModel>() {
