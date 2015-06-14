@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="entries_list_options_preference">
+        <item>Germany</item>
+        <item>Sweden</item>
+        <item>Spain</item>
+        <item>United States</item>
+    </string-array>
+
+    <string-array name="entries_list_values_preference">
+        <item>DE</item>
+        <item>SE</item>
+        <item>ES</item>
+        <item>US</item>
+    </string-array>
+</resources>

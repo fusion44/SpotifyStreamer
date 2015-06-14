@@ -18,4 +18,11 @@
     <string name="artist_image">Artist image</string>
     <string name="album_cover_image">Album cover image</string>
     <string name="key_artist_search_result">key_artist_search_result</string>
+    <string name="language__category">Language Selection</string>
+    <string name="title_language_preference">Country</string>
+    <string name="summary_language_preference">%s</string>
+    <string name="key_language_default_value">US</string>
+    <string name="title_activity_preference">Preferences</string>
+    <string name="dialog_title_country_list_preference">Available Countries</string>
+    <string name="key_country_code">key_country_list_preference</string>
 </resources>

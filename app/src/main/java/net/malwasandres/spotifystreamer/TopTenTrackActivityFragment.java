@@ -1,6 +1,8 @@
 package net.malwasandres.spotifystreamer;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
@@ -14,7 +16,6 @@ import android.view.ViewGroup;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 import butterknife.ButterKnife;
@@ -69,9 +70,10 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
 
         if (artistId != null) {
             Map<String, Object> countryCode = new HashMap<>(1);
-            countryCode.put("country", Locale.getDefault().getCountry());
 
-            setRetainInstance(true);
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            String cc  = prefs.getString(getString(R.string.key_country_code), "");
+            countryCode.put("country", cc);
 
             spotify.getArtistTopTrack(artistId, countryCode, new Callback<Tracks>() {
                 @Override

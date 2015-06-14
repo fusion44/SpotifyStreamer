@@ -19,6 +19,14 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".StreamerPreferenceActivity"
+            android:label="@string/title_activity_preference"
+            android:parentActivityName=".MainActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="net.malwasandres.spotifystreamer.MainActivity" />
+        </activity>
+        <activity
             android:name=".TopTenTrackActivity"
             android:label="@string/title_activity_top_ten_track"
             android:parentActivityName=".MainActivity" >
