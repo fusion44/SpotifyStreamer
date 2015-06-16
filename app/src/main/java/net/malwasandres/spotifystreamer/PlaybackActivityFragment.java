@@ -4,16 +4,15 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.Fragment;
-import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.squareup.picasso.Picasso;
 
@@ -36,17 +35,19 @@ public class PlaybackActivityFragment extends Fragment {
 
     @OnClick(R.id.skipPreviousButton)
     public void onSkipPreviousClick() {
-        Toast.makeText(getActivity(), "Not implemented yet!", Toast.LENGTH_SHORT).show();
+        mPlaybackService.onPreviousTrackClick();
     }
 
     @OnClick(R.id.skipNextButton)
     public void onSkipNextClick() {
-        Toast.makeText(getActivity(), "Not implemented yet!", Toast.LENGTH_SHORT).show();
+        mPlaybackService.onNextTrackClick();
     }
 
     @OnClick(R.id.playButton)
     public void onPlayButton() {
-
+        boolean playing = mPlaybackService.onPlayClick();
+        if (playing) mPlayButton.setImageResource(R.drawable.ic_av_pause);
+        else mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
     }
 
     @InjectView(R.id.playButton)

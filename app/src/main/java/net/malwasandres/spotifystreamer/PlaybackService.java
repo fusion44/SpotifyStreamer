@@ -6,6 +6,7 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
+
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -55,6 +56,7 @@ public class PlaybackService extends Service implements
 
     private void startPlay(TrackModel track) {
         try {
+            mMediaplayer.reset();
             mMediaplayer.setDataSource(track.previewUrl);
             mMediaplayer.prepare();
         } catch (IOException e) {
@@ -79,8 +81,8 @@ public class PlaybackService extends Service implements
     }
 
     @Override
-    public boolean onUnbind(Intent intent){
-        if(mMediaplayer != null) {
+    public boolean onUnbind(Intent intent) {
+        if (mMediaplayer != null) {
             mMediaplayer.stop();
             mMediaplayer.release();
             mMediaplayer = null;
@@ -96,6 +98,28 @@ public class PlaybackService extends Service implements
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
 
+    }
+
+    public void onPreviousTrackClick() {
+        final int index = mTracks.indexOf(mCurrentTrack);
+        if (index == 0) playTrack(mTracks.size() - 1);
+        else playTrack(index - 1);
+    }
+
+    public void onNextTrackClick() {
+        final int index = mTracks.indexOf(mCurrentTrack);
+        if (index == mTracks.size() - 1) playTrack(0);
+        else playTrack(index + 1);
+    }
+
+    public boolean onPlayClick() {
+        if (mMediaplayer.isPlaying()) {
+            mMediaplayer.pause();
+            return false; // not playing -> Fragment must set button drawable accordingly
+        } else {
+            mMediaplayer.start();
+            return true; // playing something
+        }
     }
 
     public class TrackBinder extends Binder {
