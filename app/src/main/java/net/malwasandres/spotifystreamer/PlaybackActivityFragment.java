@@ -5,14 +5,20 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.squareup.picasso.Picasso;
 
@@ -29,25 +35,45 @@ import butterknife.OnClick;
 public class PlaybackActivityFragment extends Fragment {
     private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
 
-    PlaybackService mPlaybackService;
-    Intent mPlaybackIntent;
-    private Boolean mPlaybackServiceBound = false;
+    static final int MSG_CURRENT_TRACK = 1;
+    static final int MSG_PLAYBACK_START = 2;
+    static final int MSG_PLAYBACK_STOP = 3;
+    static final int MSG_PLAYBACK_POSITION = 4;
 
     @OnClick(R.id.skipPreviousButton)
     public void onSkipPreviousClick() {
-        mPlaybackService.onPreviousTrackClick();
+        Message msg = Message.obtain(null, PlaybackService.MSG_PREVIOUS_TRACK);
+        msg.replyTo = mMessenger;
+        try {
+            mServiceMessenger.send(msg);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     @OnClick(R.id.skipNextButton)
     public void onSkipNextClick() {
-        mPlaybackService.onNextTrackClick();
+        Message msg = Message.obtain(null, PlaybackService.MSG_NEXT_TRACK);
+        msg.replyTo = mMessenger;
+        try {
+            mServiceMessenger.send(msg);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     @OnClick(R.id.playButton)
     public void onPlayButton() {
-        boolean playing = mPlaybackService.onPlayClick();
-        if (playing) mPlayButton.setImageResource(R.drawable.ic_av_pause);
-        else mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
+        Message msg = Message.obtain(null, PlaybackService.MSG_TOGGLE_PLAY);
+        msg.replyTo = mMessenger;
+        try {
+            mServiceMessenger.send(msg);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+        /*if (true) mPlayButton.setImageResource(R.drawable.ic_av_pause);
+        else mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);*/
     }
 
     @InjectView(R.id.playButton)
@@ -71,6 +97,85 @@ public class PlaybackActivityFragment extends Fragment {
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
 
+    /** Messenger for communicating with service. */
+    Messenger mServiceMessenger = null;
+    /** Flag indicating whether we have called bind on the service. */
+    boolean mIsBound;
+
+    /**
+     * Handler of incoming messages from service.
+     */
+    class IncomingHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_CURRENT_TRACK:
+                    msg.getData().setClassLoader(TrackModel.class.getClassLoader());
+                    TrackModel t = msg.getData().getParcelable(
+                            getString(R.string.key_spotify_playback_track_single));
+                    if(mCurrentTrack.id.equals(t.id)) {
+                        mCurrentTrack = t;
+                        setupUi();
+                    }
+                    Log.i(LOG_TAG, t.name);
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+        }
+    }
+
+    /**
+     * Target we publish for clients to send messages to IncomingHandler.
+     */
+    final Messenger mMessenger = new Messenger(new IncomingHandler());
+
+    /**
+     * Class for interacting with the main interface of the service.
+     */
+    private ServiceConnection mConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // This is called when the connection with the service has been
+            // established, giving us the service object we can use to
+            // interact with the service.  We are communicating with our
+            // service through an IDL interface, so get a client-side
+            // representation of that from the raw service object.
+            mServiceMessenger = new Messenger(service);
+
+            // We want to monitor the service for as long as we are
+            // connected to it.
+            try {
+                Message msg = Message.obtain(null, PlaybackService.MSG_REGISTER_CLIENT);
+                msg.replyTo = mMessenger;
+                mServiceMessenger.send(msg);
+
+                Bundle b = new Bundle();
+                b.putParcelable(
+                        getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
+                b.putParcelableArrayList(getString(R.string.key_track_list), mTracks);
+                msg = Message.obtain(null, PlaybackService.MSG_SET_TRACKS);
+                msg.setData(b);
+                mServiceMessenger.send(msg);
+            } catch (RemoteException e) {
+                // In this case the service has crashed before we could even
+                // do anything with it; we can count on soon being
+                // disconnected (and then reconnected if it can be restarted)
+                // so there is no need to do anything here.
+            }
+
+            Toast.makeText(getActivity(), "Connected", Toast.LENGTH_SHORT).show();
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            // This is called when the connection with the service has been
+            // unexpectedly disconnected -- that is, its process crashed.
+            mServiceMessenger = null;
+
+            Toast.makeText(getActivity(), "Disconnected", Toast.LENGTH_SHORT).show();
+        }
+    };
+
     public PlaybackActivityFragment() {
     }
 
@@ -89,11 +194,18 @@ public class PlaybackActivityFragment extends Fragment {
     @Override
     public void onStart() {
         super.onStart();
-        if (mPlaybackIntent == null) {
-            mPlaybackIntent = new Intent(getActivity(), PlaybackService.class);
-            getActivity().bindService(mPlaybackIntent, playbackConnection, Context.BIND_AUTO_CREATE);
-            getActivity().startService(mPlaybackIntent);
-        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        doBindService();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        doUnbindService();
     }
 
     @Override
@@ -102,21 +214,38 @@ public class PlaybackActivityFragment extends Fragment {
         setupUi();
     }
 
-    private ServiceConnection playbackConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            PlaybackService.TrackBinder binder = (PlaybackService.TrackBinder) service;
-            mPlaybackService = binder.getService();
-            mPlaybackServiceBound = true;
-            mPlaybackService.setTrackList(mTracks);
-            mPlaybackService.playTrack(mCurrentTrack);
-        }
+    void doBindService() {
+        // Establish a connection with the service.  We use an explicit
+        // class name because there is no reason to be able to let other
+        // applications replace our component.
+        Intent i = new Intent(getActivity(), PlaybackService.class);
+        i.putExtra(getString(R.string.key_track_list), mTracks);
+        i.putExtra(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
+        getActivity().bindService(i, mConnection, Context.BIND_AUTO_CREATE);
+        mIsBound = true;
+    }
 
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            mPlaybackServiceBound = false;
+    void doUnbindService() {
+        if (mIsBound) {
+            // If we have received the service, and hence registered with
+            // it, then now is the time to unregister.
+            if (mServiceMessenger != null) {
+                try {
+                    Message msg = Message.obtain(null,
+                            PlaybackService.MSG_UNREGISTER_CLIENT);
+                    msg.replyTo = mMessenger;
+                    mServiceMessenger.send(msg);
+                } catch (RemoteException e) {
+                    // There is nothing special we need to do if the service
+                    // has crashed.
+                }
+            }
+
+            // Detach our existing connection.
+            getActivity().unbindService(mConnection);
+            mIsBound = false;
         }
-    };
+    }
 
     private void setupUi() {
         mArtistNameTextView.setText(mCurrentTrack.artistName);
