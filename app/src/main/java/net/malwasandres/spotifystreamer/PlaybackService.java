@@ -10,6 +10,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.util.Log;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -71,11 +72,9 @@ public class PlaybackService extends Service implements
      */
     final Messenger mMessenger = new Messenger(new IncomingHandler());
 
-    private MediaPlayer mMediaplayer;
+    private MediaPlayer mMediaPlayer;
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
-    private int mCurrentTrackPosition;
-    private int mTrackDuration;
 
     public PlaybackService() {
 
@@ -84,11 +83,11 @@ public class PlaybackService extends Service implements
     @Override
     public void onCreate() {
         super.onCreate();
-        mMediaplayer = new MediaPlayer();
-        mMediaplayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        mMediaplayer.setOnPreparedListener(this);
-        mMediaplayer.setOnCompletionListener(this);
-        mMediaplayer.setOnErrorListener(this);
+        mMediaPlayer = new MediaPlayer();
+        mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        mMediaPlayer.setOnPreparedListener(this);
+        mMediaPlayer.setOnCompletionListener(this);
+        mMediaPlayer.setOnErrorListener(this);
     }
 
     public void playTrack(TrackModel track) {
@@ -99,23 +98,13 @@ public class PlaybackService extends Service implements
     public void playTrack(int listPosition) {
         mCurrentTrack = mTracks.get(listPosition);
         startPlay(mCurrentTrack);
-
-        Message m = Message.obtain(null, PlaybackActivityFragment.MSG_CURRENT_TRACK);
-        Bundle b = new Bundle();
-        b.putParcelable(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
-        m.setData(b);
-        try {
-            mMessenger.send(m);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
     }
 
     private void startPlay(TrackModel track) {
         try {
-            mMediaplayer.reset();
-            mMediaplayer.setDataSource(track.previewUrl);
-            mMediaplayer.prepare();
+            mMediaPlayer.reset();
+            mMediaPlayer.setDataSource(track.previewUrl);
+            mMediaPlayer.prepare();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -123,8 +112,19 @@ public class PlaybackService extends Service implements
 
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
-        mMediaplayer.start();
-        mTrackDuration = mMediaplayer.getDuration();
+        Log.i(LOG_TAG, "Sending message");
+        mMediaPlayer.start();
+        mCurrentTrack.length = mMediaPlayer.getDuration();
+
+        Message m = Message.obtain(null, PlaybackActivityFragment.MSG_CURRENT_TRACK);
+        Bundle b = new Bundle();
+        b.putParcelable(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
+        m.setData(b);
+        try {
+            mClients.get(0).send(m);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -139,10 +139,10 @@ public class PlaybackService extends Service implements
 
     @Override
     public boolean onUnbind(Intent intent) {
-        if (mMediaplayer != null) {
-            mMediaplayer.stop();
-            mMediaplayer.release();
-            mMediaplayer = null;
+        if (mMediaPlayer != null) {
+            mMediaPlayer.stop();
+            mMediaPlayer.release();
+            mMediaPlayer = null;
         }
         return false;
     }
@@ -169,13 +169,23 @@ public class PlaybackService extends Service implements
         else playTrack(index + 1);
     }
 
-    public boolean onTogglePlay() {
-        if (mMediaplayer.isPlaying()) {
-            mMediaplayer.pause();
-            return false; // not playing -> Fragment must set button drawable accordingly
+    public void onTogglePlay() {
+        if (mMediaPlayer.isPlaying()) {
+            mMediaPlayer.pause();
+
+            try {
+                mClients.get(0).send(Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_STOP));
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         } else {
-            mMediaplayer.start();
-            return true; // playing something
+            mMediaPlayer.start();
+
+            try {
+                mClients.get(0).send(Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_START));
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

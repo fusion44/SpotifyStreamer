@@ -11,14 +11,12 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.squareup.picasso.Picasso;
 
@@ -39,6 +37,7 @@ public class PlaybackActivityFragment extends Fragment {
     static final int MSG_PLAYBACK_START = 2;
     static final int MSG_PLAYBACK_STOP = 3;
     static final int MSG_PLAYBACK_POSITION = 4;
+    static final int MSG_TRACK_LENGTH = 5;
 
     @OnClick(R.id.skipPreviousButton)
     public void onSkipPreviousClick() {
@@ -73,7 +72,7 @@ public class PlaybackActivityFragment extends Fragment {
         }
 
         /*if (true) mPlayButton.setImageResource(R.drawable.ic_av_pause);
-        else mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);*/
+        else */
     }
 
     @InjectView(R.id.playButton)
@@ -97,6 +96,7 @@ public class PlaybackActivityFragment extends Fragment {
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
 
+
     /** Messenger for communicating with service. */
     Messenger mServiceMessenger = null;
     /** Flag indicating whether we have called bind on the service. */
@@ -113,11 +113,16 @@ public class PlaybackActivityFragment extends Fragment {
                     msg.getData().setClassLoader(TrackModel.class.getClassLoader());
                     TrackModel t = msg.getData().getParcelable(
                             getString(R.string.key_spotify_playback_track_single));
-                    if(mCurrentTrack.id.equals(t.id)) {
+                    if(!mCurrentTrack.id.equals(t.id)) {
                         mCurrentTrack = t;
                         setupUi();
                     }
-                    Log.i(LOG_TAG, t.name);
+                    break;
+                case MSG_PLAYBACK_START:
+                    mPlayButton.setImageResource(R.drawable.ic_av_pause);
+                    break;
+                case MSG_PLAYBACK_STOP:
+                    mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
                     break;
                 default:
                     super.handleMessage(msg);
@@ -163,16 +168,12 @@ public class PlaybackActivityFragment extends Fragment {
                 // disconnected (and then reconnected if it can be restarted)
                 // so there is no need to do anything here.
             }
-
-            Toast.makeText(getActivity(), "Connected", Toast.LENGTH_SHORT).show();
         }
 
         public void onServiceDisconnected(ComponentName className) {
             // This is called when the connection with the service has been
             // unexpectedly disconnected -- that is, its process crashed.
             mServiceMessenger = null;
-
-            Toast.makeText(getActivity(), "Disconnected", Toast.LENGTH_SHORT).show();
         }
     };
 
@@ -255,6 +256,8 @@ public class PlaybackActivityFragment extends Fragment {
                     .load(mCurrentTrack.imageUrl)
                     .into(mAlbumImageView);
         }
+        mEndTextView.setText(String.valueOf(mCurrentTrack.length / 1000));
+        mPlayButton.setImageResource(R.drawable.ic_av_pause);
     }
 
     @Override
