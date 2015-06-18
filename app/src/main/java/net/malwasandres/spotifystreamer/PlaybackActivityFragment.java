@@ -11,11 +11,13 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
@@ -93,13 +95,20 @@ public class PlaybackActivityFragment extends Fragment {
     @InjectView(R.id.playbackAlbumImageView)
     ImageView mAlbumImageView;
 
+    @InjectView(R.id.seekBar)
+    SeekBar mPositionSeekbar;
+
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
 
 
-    /** Messenger for communicating with service. */
+    /**
+     * Messenger for communicating with service.
+     */
     Messenger mServiceMessenger = null;
-    /** Flag indicating whether we have called bind on the service. */
+    /**
+     * Flag indicating whether we have called bind on the service.
+     */
     boolean mIsBound;
 
     /**
@@ -113,10 +122,8 @@ public class PlaybackActivityFragment extends Fragment {
                     msg.getData().setClassLoader(TrackModel.class.getClassLoader());
                     TrackModel t = msg.getData().getParcelable(
                             getString(R.string.key_spotify_playback_track_single));
-                    if(!mCurrentTrack.id.equals(t.id)) {
-                        mCurrentTrack = t;
-                        setupUi();
-                    }
+                    mCurrentTrack = t;
+                    setupUi();
                     break;
                 case MSG_PLAYBACK_START:
                     mPlayButton.setImageResource(R.drawable.ic_av_pause);
@@ -124,6 +131,10 @@ public class PlaybackActivityFragment extends Fragment {
                 case MSG_PLAYBACK_STOP:
                     mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
                     break;
+                case MSG_PLAYBACK_POSITION:
+                    int pos = msg.getData().getInt(getString(R.string.key_playback_position)) + 1000;
+                    Log.i(LOG_TAG, String.valueOf(pos));
+                    mPositionSeekbar.setProgress(pos / 1000);
                 default:
                     super.handleMessage(msg);
             }
@@ -258,6 +269,8 @@ public class PlaybackActivityFragment extends Fragment {
         }
         mEndTextView.setText(String.valueOf(mCurrentTrack.length / 1000));
         mPlayButton.setImageResource(R.drawable.ic_av_pause);
+        mPositionSeekbar.setMax(mCurrentTrack.length / 1000);
+        mPositionSeekbar.setProgress(0);
     }
 
     @Override

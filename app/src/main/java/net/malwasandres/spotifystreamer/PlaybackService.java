@@ -10,10 +10,13 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-import android.util.Log;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 
 // http://code.tutsplus.com/tutorials/create-a-music-player-on-android-song-playback--mobile-22778
@@ -72,6 +75,15 @@ public class PlaybackService extends Service implements
      */
     final Messenger mMessenger = new Messenger(new IncomingHandler());
 
+    /*
+     * Playback position updater
+     */
+
+    private final ScheduledExecutorService mScheduler =
+            Executors.newScheduledThreadPool(1);
+    ;
+    private ScheduledFuture<?> mScheduledFuture;
+
     private MediaPlayer mMediaPlayer;
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
@@ -112,7 +124,6 @@ public class PlaybackService extends Service implements
 
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
-        Log.i(LOG_TAG, "Sending message");
         mMediaPlayer.start();
         mCurrentTrack.length = mMediaPlayer.getDuration();
 
@@ -124,6 +135,32 @@ public class PlaybackService extends Service implements
             mClients.get(0).send(m);
         } catch (RemoteException e) {
             e.printStackTrace();
+        }
+
+
+        startScheduler();
+    }
+
+    private void startScheduler() {
+        stopScheduler();
+        mScheduledFuture = mScheduler.scheduleAtFixedRate(new Runnable() {
+            public void run() {
+                Message msg = Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_POSITION);
+                Bundle b = new Bundle();
+                b.putInt(getString(R.string.key_playback_position), mMediaPlayer.getCurrentPosition());
+                msg.setData(b);
+                try {
+                    mClients.get(0).send(msg);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+    }
+
+    private void stopScheduler() {
+        if (mScheduledFuture != null && !mScheduledFuture.isCancelled()) {
+            mScheduledFuture.cancel(true);
         }
     }
 
@@ -154,7 +191,7 @@ public class PlaybackService extends Service implements
 
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
-
+        stopScheduler();
     }
 
     public void onPreviousTrack() {
@@ -172,6 +209,7 @@ public class PlaybackService extends Service implements
     public void onTogglePlay() {
         if (mMediaPlayer.isPlaying()) {
             mMediaPlayer.pause();
+            stopScheduler();
 
             try {
                 mClients.get(0).send(Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_STOP));
@@ -180,6 +218,7 @@ public class PlaybackService extends Service implements
             }
         } else {
             mMediaPlayer.start();
+            startScheduler();
 
             try {
                 mClients.get(0).send(Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_START));
