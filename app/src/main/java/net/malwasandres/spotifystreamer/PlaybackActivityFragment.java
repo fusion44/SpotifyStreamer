@@ -11,7 +11,6 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,7 +31,7 @@ import butterknife.OnClick;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class PlaybackActivityFragment extends Fragment {
+public class PlaybackActivityFragment extends Fragment implements SeekBar.OnSeekBarChangeListener {
     private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
 
     static final int MSG_CURRENT_TRACK = 1;
@@ -133,7 +132,6 @@ public class PlaybackActivityFragment extends Fragment {
                     break;
                 case MSG_PLAYBACK_POSITION:
                     int pos = msg.getData().getInt(getString(R.string.key_playback_position)) + 1000;
-                    Log.i(LOG_TAG, String.valueOf(pos));
                     mPositionSeekbar.setProgress(pos / 1000);
                 default:
                     super.handleMessage(msg);
@@ -274,10 +272,38 @@ public class PlaybackActivityFragment extends Fragment {
     }
 
     @Override
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+        if (fromUser) {
+            final Message msg = Message.obtain(null, PlaybackService.MSG_SET_PLAYBACK_POS);
+            Bundle b = new Bundle();
+            b.putInt(getString(R.string.key_playback_position), progress);
+            msg.setData(b);
+            try {
+                mServiceMessenger.send(msg);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {
+
+    }
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {
+
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_playback, container, false);
         ButterKnife.inject(this, v);
+
+        mPositionSeekbar.setOnSeekBarChangeListener(this);
+
         return v;
     }
 }

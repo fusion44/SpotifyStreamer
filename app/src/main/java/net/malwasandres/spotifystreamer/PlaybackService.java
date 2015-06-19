@@ -27,6 +27,7 @@ public class PlaybackService extends Service implements
         MediaPlayer.OnCompletionListener {
     private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
 
+
     ArrayList<Messenger> mClients = new ArrayList<Messenger>();
 
     static final int MSG_REGISTER_CLIENT = 1;
@@ -35,6 +36,8 @@ public class PlaybackService extends Service implements
     static final int MSG_PREVIOUS_TRACK = 4;
     static final int MSG_TOGGLE_PLAY = 5;
     static final int MSG_SET_TRACKS = 6;
+    static final int MSG_SET_PLAYBACK_POS = 7;
+    private int mStartPlaybackFrom = -1;
 
     class IncomingHandler extends Handler {
         @Override
@@ -63,7 +66,16 @@ public class PlaybackService extends Service implements
                     TrackModel t = data.getParcelable(
                             getString(R.string.key_spotify_playback_track_single));
                     playTrack(t);
+                    mStartPlaybackFrom = -1;
                     break;
+                case MSG_SET_PLAYBACK_POS:
+                    int pos = msg.getData().getInt(getString(R.string.key_playback_position));
+                    if (mMediaPlayer.isPlaying()) {
+                        mMediaPlayer.seekTo(pos * 1000);
+                    } else {
+                        if (mCurrentTrack != null) startPlay(mCurrentTrack);
+                        mStartPlaybackFrom = pos * 1000;
+                    }
                 default:
                     super.handleMessage(msg);
             }
@@ -81,7 +93,7 @@ public class PlaybackService extends Service implements
 
     private final ScheduledExecutorService mScheduler =
             Executors.newScheduledThreadPool(1);
-    ;
+
     private ScheduledFuture<?> mScheduledFuture;
 
     private MediaPlayer mMediaPlayer;
@@ -124,6 +136,7 @@ public class PlaybackService extends Service implements
 
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
+        if (mStartPlaybackFrom != -1) mMediaPlayer.seekTo(mStartPlaybackFrom);
         mMediaPlayer.start();
         mCurrentTrack.length = mMediaPlayer.getDuration();
 
@@ -196,12 +209,14 @@ public class PlaybackService extends Service implements
 
     public void onPreviousTrack() {
         final int index = mTracks.indexOf(mCurrentTrack);
+        mStartPlaybackFrom = -1;
         if (index == 0) playTrack(mTracks.size() - 1);
         else playTrack(index - 1);
     }
 
     public void onNextTrack() {
         final int index = mTracks.indexOf(mCurrentTrack);
+        mStartPlaybackFrom = -1;
         if (index == mTracks.size() - 1) playTrack(0);
         else playTrack(index + 1);
     }
