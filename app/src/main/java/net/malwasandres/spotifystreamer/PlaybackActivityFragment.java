@@ -131,7 +131,7 @@ public class PlaybackActivityFragment extends Fragment implements SeekBar.OnSeek
                     mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
                     break;
                 case MSG_PLAYBACK_POSITION:
-                    int pos = msg.getData().getInt(getString(R.string.key_playback_position)) + 1000;
+                    int pos = msg.getData().getInt(getString(R.string.key_playback_position)) + 500;
                     mPositionSeekbar.setProgress(pos / 1000);
                 default:
                     super.handleMessage(msg);

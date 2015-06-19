@@ -136,6 +136,8 @@ public class PlaybackService extends Service implements
 
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
+        startScheduler();
+
         if (mStartPlaybackFrom != -1) mMediaPlayer.seekTo(mStartPlaybackFrom);
         mMediaPlayer.start();
         mCurrentTrack.length = mMediaPlayer.getDuration();
@@ -149,9 +151,6 @@ public class PlaybackService extends Service implements
         } catch (RemoteException e) {
             e.printStackTrace();
         }
-
-
-        startScheduler();
     }
 
     private void startScheduler() {
