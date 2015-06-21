@@ -38,6 +38,7 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
     @InjectView(R.id.trackList)
     RecyclerView mTrackList;
     private TrackAdapter mAdapter;
+    private boolean mUseTwoPaneLayout;
 
     public TopTenTrackActivityFragment() {
     }
@@ -65,14 +66,20 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         SpotifyService spotify = new SpotifyApi().getService();
-        String artistId = getActivity().getIntent().getStringExtra(
-                getActivity().getString(R.string.key_spotify_artist_id));
+        String artistId;
+        if (mUseTwoPaneLayout) {
+            artistId = getArguments().getString(
+                    getString(R.string.key_spotify_artist_id));
+        } else {
+            artistId = getActivity().getIntent().getStringExtra(
+                    getString(R.string.key_spotify_artist_id));
+        }
 
-        if (artistId != null) {
+        if (artistId != null && !artistId.equals("")) {
             Map<String, Object> countryCode = new HashMap<>(1);
 
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-            String cc  = prefs.getString(getString(R.string.key_country_code), "");
+            String cc = prefs.getString(getString(R.string.key_country_code), "");
             countryCode.put("country", cc);
 
             spotify.getArtistTopTrack(artistId, countryCode, new Callback<Tracks>() {
@@ -144,5 +151,9 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
                 mAdapter.getTracks().indexOf(track));
         i.putExtra(getString(R.string.key_track_list), mAdapter.getTracks());
         startActivity(i);
+    }
+
+    public void setUseTwoPaneLayout(boolean useTwoPaneLayout) {
+        this.mUseTwoPaneLayout = useTwoPaneLayout;
     }
 }

@@ -1,20 +1,40 @@
 package net.malwasandres.spotifystreamer;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String MAIN_ACTIVITY_FRAGMENT_KEY = "key_main_activity_fragment";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-    }
 
+        boolean twoPane = findViewById(R.id.search_container) != null;
+
+        MainActivityFragment mTripDetailFragment = (MainActivityFragment) getSupportFragmentManager()
+                .findFragmentByTag(MAIN_ACTIVITY_FRAGMENT_KEY);
+
+        if (mTripDetailFragment == null) {
+            mTripDetailFragment = new MainActivityFragment();
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.search_container, mTripDetailFragment, MAIN_ACTIVITY_FRAGMENT_KEY)
+                    .commit();
+        }
+
+        mTripDetailFragment.setUseTwoPaneLayout(twoPane);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

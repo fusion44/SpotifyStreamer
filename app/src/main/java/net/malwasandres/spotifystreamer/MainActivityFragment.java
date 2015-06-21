@@ -29,6 +29,7 @@ import retrofit.client.Response;
  * A placeholder fragment containing a simple view.
  */
 public class MainActivityFragment extends Fragment implements ArtistsAdapter.ArtistClickListener {
+    private static final String TOP_TEN_TRACK_FRAGMENT_KEY = "TOP_TEN_TRACK_FRAGMENT_KEY";
     public static String LOG_TAG = MainActivityFragment.class.getSimpleName();
     private static int MAX_SEARCH_RESULTS = 10;
 
@@ -39,6 +40,7 @@ public class MainActivityFragment extends Fragment implements ArtistsAdapter.Art
     @InjectView(R.id.artistSearchResultList)
     RecyclerView mSearchResultList;
     private ArtistsAdapter mAdapter;
+    private boolean mUseTwoPaneLayout;
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -155,8 +157,26 @@ public class MainActivityFragment extends Fragment implements ArtistsAdapter.Art
 
     @Override
     public void onArtistClick(ArtistModel artist) {
-        Intent i = new Intent(getActivity(), TopTenTrackActivity.class);
-        i.putExtra(getActivity().getString(R.string.key_spotify_artist_id), artist.id);
-        startActivity(i);
+        Bundle b = new Bundle();
+        b.putString(getActivity().getString(R.string.key_spotify_artist_id), artist.id);
+
+        if (mUseTwoPaneLayout) {
+            android.support.v4.app.FragmentManager fm = getActivity().getSupportFragmentManager();
+            TopTenTrackActivityFragment frag = new TopTenTrackActivityFragment();
+            frag.setUseTwoPaneLayout(mUseTwoPaneLayout);
+            frag.setArguments(b);
+
+            fm.beginTransaction()
+                    .replace(R.id.top_ten_track_list_container, frag, TOP_TEN_TRACK_FRAGMENT_KEY)
+                    .commitAllowingStateLoss(); // not sure about this one.
+        } else {
+            Intent i = new Intent(getActivity(), TopTenTrackActivity.class);
+            i.putExtras(b);
+            startActivity(i);
+        }
+    }
+
+    public void setUseTwoPaneLayout(boolean useTwoPaneLayout) {
+        this.mUseTwoPaneLayout = useTwoPaneLayout;
     }
 }
