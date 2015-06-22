@@ -6,7 +6,7 @@ import android.os.Parcelable;
 import kaaes.spotify.webapi.android.models.Track;
 
 // TODO: look into replacing with AutoParcel https://github.com/frankiesardo/auto-parcel
-public class TrackModel implements Parcelable {
+public class TrackModel extends BaseViewModel implements Parcelable {
     public String id;
     public String name;
     public String imageUrl;
@@ -23,6 +23,7 @@ public class TrackModel implements Parcelable {
         albumName = in.readString();
         previewUrl = in.readString();
         length = in.readInt();
+        layout = R.layout.track_item;
     }
 
     protected TrackModel(Track in) {
@@ -33,6 +34,7 @@ public class TrackModel implements Parcelable {
         albumName = in.album.name;
         previewUrl = in.preview_url;
         length = 0;
+        layout = R.layout.track_item;
     }
 
     @Override

@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId "net.malwasandres.spotifystreamer"
-        minSdkVersion 11
+        minSdkVersion 14
         targetSdkVersion 22
         versionCode 1
         versionName "1.0"

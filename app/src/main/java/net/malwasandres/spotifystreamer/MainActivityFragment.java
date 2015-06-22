@@ -28,7 +28,7 @@ import retrofit.client.Response;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class MainActivityFragment extends Fragment implements ArtistsAdapter.ArtistClickListener {
+public class MainActivityFragment extends Fragment implements ArtistListAdapter.ClickListener {
     private static final String TOP_TEN_TRACK_FRAGMENT_KEY = "TOP_TEN_TRACK_FRAGMENT_KEY";
     public static String LOG_TAG = MainActivityFragment.class.getSimpleName();
     private static int MAX_SEARCH_RESULTS = 10;
@@ -39,14 +39,14 @@ public class MainActivityFragment extends Fragment implements ArtistsAdapter.Art
     TextInputLayout mSearchBoxDeco;
     @InjectView(R.id.artistSearchResultList)
     RecyclerView mSearchResultList;
-    private ArtistsAdapter mAdapter;
+    private ArtistListAdapter mAdapter;
     private boolean mUseTwoPaneLayout;
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putParcelableArrayList(
-                getActivity().getString(R.string.key_artist_search_result), mAdapter.getArtists());
+                getActivity().getString(R.string.key_artist_search_result), mAdapter.getModels());
     }
 
     @Override
@@ -110,7 +110,7 @@ public class MainActivityFragment extends Fragment implements ArtistsAdapter.Art
         if (items.size() == 0) {
             mSearchBoxDeco.setError(getActivity().getString(R.string.no_artist_found));
         } else {
-            mAdapter.replaceArtists(items);
+            mAdapter.replaceModels(items);
             mSearchBoxDeco.setErrorEnabled(false);
         }
     }
@@ -136,15 +136,15 @@ public class MainActivityFragment extends Fragment implements ArtistsAdapter.Art
         mSearchResultList.setLayoutManager(
                 new LinearLayoutManager(this.getActivity(), LinearLayoutManager.VERTICAL, false));
 
-        mAdapter = new ArtistsAdapter(new ArrayList<ArtistModel>());
-        mAdapter.setOnArtistClickListener(this);
+        mAdapter = new ArtistListAdapter();
+        mAdapter.setOnItemClickListener(this);
         mSearchResultList.setAdapter(mAdapter);
 
         if (savedInstanceState != null) {
             ArrayList<ArtistModel> m = savedInstanceState.getParcelableArrayList(
                     getActivity().getString(R.string.key_artist_search_result));
 
-            if (m != null) mAdapter.replaceArtists(m);
+            if (m != null) mAdapter.replaceModels(m);
         }
         return v;
     }
@@ -155,8 +155,13 @@ public class MainActivityFragment extends Fragment implements ArtistsAdapter.Art
         ButterKnife.reset(this);
     }
 
+    public void setUseTwoPaneLayout(boolean useTwoPaneLayout) {
+        this.mUseTwoPaneLayout = useTwoPaneLayout;
+    }
+
     @Override
-    public void onArtistClick(ArtistModel artist) {
+    public void onItemClick(BaseViewModel model) {
+        ArtistModel artist = (ArtistModel) model;
         Bundle b = new Bundle();
         b.putString(getActivity().getString(R.string.key_spotify_artist_id), artist.id);
 
@@ -174,9 +179,5 @@ public class MainActivityFragment extends Fragment implements ArtistsAdapter.Art
             i.putExtras(b);
             startActivity(i);
         }
-    }
-
-    public void setUseTwoPaneLayout(boolean useTwoPaneLayout) {
-        this.mUseTwoPaneLayout = useTwoPaneLayout;
     }
 }

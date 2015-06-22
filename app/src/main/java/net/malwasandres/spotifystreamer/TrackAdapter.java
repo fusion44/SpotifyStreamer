@@ -9,87 +9,33 @@ import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import butterknife.ButterKnife;
 import butterknife.InjectView;
-import kaaes.spotify.webapi.android.models.Track;
 
-public class TrackAdapter extends RecyclerView.Adapter {
-    ArrayList<TrackModel> mTracks;
-    private TrackClickListener mOutsideClickListener;
-
-    public TrackAdapter(ArrayList<TrackModel> tracks) {
-        super();
-        mTracks = tracks;
-    }
-
+public class TrackAdapter extends BaseAdapter<TrackModel, TrackAdapter.ViewHolder> {
     @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.track_item, parent, false);
         return new ViewHolder(v, mOutsideClickListener);
     }
 
-    public void setOnTrackClickListener(TrackClickListener outsideClickListener) {
-        mOutsideClickListener = outsideClickListener;
-    }
-
-    public void add(int position, TrackModel track) {
-        mTracks.add(position, track);
-        notifyItemInserted(position);
-    }
-
-    public void remove(Track track) {
-        if(!mTracks.contains(track)) return;
-
-        int position = mTracks.indexOf(track);
-        mTracks.remove(position);
-        notifyItemRemoved(position);
-    }
-
-    public void clear() {
-        mTracks.clear();
-    }
-
-    public ArrayList<TrackModel> getTracks() {
-        return mTracks;
-    }
-
-
-    public void replaceTracks(ArrayList<TrackModel> tracks) {
-        mTracks.clear();
-        mTracks = tracks;
-        notifyDataSetChanged();
-    }
-
     @Override
-    public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-        ViewHolder vh = (ViewHolder) holder;
-        TrackModel track = mTracks.get(position);
-        vh.trackNameTextView.setText(track.name);
-        if(!track.imageUrl.equals("")) {
-            Picasso.with(vh.albumImageView.getContext())
+    public void onBindViewHolder(ViewHolder holder, int position) {
+        TrackModel track = mViewModels.get(position);
+        holder.trackNameTextView.setText(track.name);
+        if (!track.imageUrl.equals("")) {
+            Picasso.with(holder.albumImageView.getContext())
                     .load(track.imageUrl)
-                    .into(vh.albumImageView);
+                    .into(holder.albumImageView);
         }
-        vh.albumNameTextView.setText(track.albumName);
+        holder.albumNameTextView.setText(track.albumName);
         holder.itemView.setTag(track);
-    }
-
-    @Override
-    public int getItemCount() {
-        return mTracks.size();
-    }
-
-    public interface TrackClickListener {
-        void onTrackClick(TrackModel track);
+        runAnimation(holder, position, defaultItemAnimationDuration, getAnimationDirection());
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-        private final TrackClickListener mOutSideClickReceiver;
+        private final BaseAdapter.ClickListener mOutSideClickReceiver;
         @InjectView(R.id.playbackAlbumImageView)
         public ImageView albumImageView;
         @InjectView(R.id.playbackAlbumNameTextView)
@@ -98,7 +44,7 @@ public class TrackAdapter extends RecyclerView.Adapter {
         public TextView trackNameTextView;
 
 
-        public ViewHolder(View itemView, TrackClickListener outSideClickReceiver) {
+        public ViewHolder(View itemView, BaseAdapter.ClickListener outSideClickReceiver) {
             super(itemView);
             ButterKnife.inject(this, itemView);
             mOutSideClickReceiver = outSideClickReceiver;
@@ -107,7 +53,7 @@ public class TrackAdapter extends RecyclerView.Adapter {
 
         @Override
         public void onClick(View view) {
-            mOutSideClickReceiver.onTrackClick((TrackModel) view.getTag());
+            mOutSideClickReceiver.onItemClick((TrackModel) view.getTag());
         }
     }
 }

@@ -32,7 +32,7 @@ import retrofit.client.Response;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class TopTenTrackActivityFragment extends Fragment implements TrackAdapter.TrackClickListener {
+public class TopTenTrackActivityFragment extends Fragment implements BaseAdapter.ClickListener {
     private static final String LOG_TAG = TopTenTrackActivityFragment.class.getSimpleName();
 
     @InjectView(R.id.trackList)
@@ -47,7 +47,7 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
     public void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
         state.putParcelableArrayList(
-                getActivity().getString(R.string.key_track_list), mAdapter.getTracks());
+                getActivity().getString(R.string.key_track_list), mAdapter.getModels());
     }
 
     @Override
@@ -57,7 +57,7 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
             ArrayList<TrackModel> m = savedInstanceState.getParcelableArrayList(
                     getActivity().getString(R.string.key_track_list));
 
-            if (m != null) mAdapter.replaceTracks(m);
+            if (m != null) mAdapter.replaceModels(m);
             setArtistTitle();
         }
     }
@@ -120,8 +120,8 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
         mTrackList.setLayoutManager(
                 new LinearLayoutManager(this.getActivity(), LinearLayoutManager.VERTICAL, false));
 
-        mAdapter = new TrackAdapter(new ArrayList<TrackModel>());
-        mAdapter.setOnTrackClickListener(this);
+        mAdapter = new TrackAdapter();
+        mAdapter.setOnItemClickListener(this);
         mTrackList.setAdapter(mAdapter);
 
         return v;
@@ -133,27 +133,27 @@ public class TopTenTrackActivityFragment extends Fragment implements TrackAdapte
     }
 
     private void loadFinished(ArrayList<TrackModel> tracks) {
-        mAdapter.replaceTracks(tracks);
+        mAdapter.replaceModels(tracks);
         setArtistTitle();
     }
 
     private void setArtistTitle() {
         ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
         if (actionBar != null) {
-            actionBar.setSubtitle(mAdapter.getTracks().get(0).artistName);
+            actionBar.setSubtitle(mAdapter.getModels().get(0).artistName);
         }
-    }
-
-    @Override
-    public void onTrackClick(TrackModel track) {
-        Intent i = new Intent(getActivity(), PlaybackActivity.class);
-        i.putExtra(getString(R.string.key_spotify_playback_track_single),
-                mAdapter.getTracks().indexOf(track));
-        i.putExtra(getString(R.string.key_track_list), mAdapter.getTracks());
-        startActivity(i);
     }
 
     public void setUseTwoPaneLayout(boolean useTwoPaneLayout) {
         this.mUseTwoPaneLayout = useTwoPaneLayout;
+    }
+
+    @Override
+    public void onItemClick(BaseViewModel model) {
+        Intent i = new Intent(getActivity(), PlaybackActivity.class);
+        i.putExtra(getString(R.string.key_spotify_playback_track_single),
+                mAdapter.getModels().indexOf(model));
+        i.putExtra(getString(R.string.key_track_list), mAdapter.getModels());
+        startActivity(i);
     }
 }
