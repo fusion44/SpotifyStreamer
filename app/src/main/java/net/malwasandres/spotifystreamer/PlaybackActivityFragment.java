@@ -10,6 +10,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,7 +32,7 @@ import butterknife.OnClick;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class PlaybackActivityFragment extends Fragment implements SeekBar.OnSeekBarChangeListener {
+public class PlaybackActivityFragment extends DialogFragment implements SeekBar.OnSeekBarChangeListener {
     private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
 
     static final int MSG_CURRENT_TRACK = 1;
@@ -39,6 +40,7 @@ public class PlaybackActivityFragment extends Fragment implements SeekBar.OnSeek
     static final int MSG_PLAYBACK_STOP = 3;
     static final int MSG_PLAYBACK_POSITION = 4;
     static final int MSG_TRACK_LENGTH = 5;
+    private boolean mUseTwoPaneLayout = false;
 
     @OnClick(R.id.skipPreviousButton)
     public void onSkipPreviousClick() {
@@ -189,14 +191,21 @@ public class PlaybackActivityFragment extends Fragment implements SeekBar.OnSeek
     public PlaybackActivityFragment() {
     }
 
+    public void setUseTwoPaneLayout(boolean useTwoPane) {
+        mUseTwoPaneLayout = useTwoPane;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Intent i = getActivity().getIntent();
-        mTracks = i.getParcelableArrayListExtra(getActivity().getString(R.string.key_track_list));
-        int trackId = getActivity().getIntent().getIntExtra(
-                getString(R.string.key_spotify_playback_track_single), -1);
+        int trackId;
+        Bundle b;
 
+        if (mUseTwoPaneLayout) b = getArguments();
+        else b = getActivity().getIntent().getExtras();
+
+        mTracks = b.getParcelableArrayList(getActivity().getString(R.string.key_track_list));
+        trackId = b.getInt(getString(R.string.key_spotify_playback_track_single), -1);
         if (trackId == -1) mCurrentTrack = mTracks.get(0);
         else mCurrentTrack = mTracks.get(trackId);
     }

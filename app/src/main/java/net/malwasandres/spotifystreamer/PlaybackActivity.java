@@ -9,6 +9,8 @@ import android.view.MenuItem;
 
 public class PlaybackActivity extends AppCompatActivity {
 
+    private static final String KEY_PLAYBACK_FRAGMENT = "KEY_PLAYBACK_FRAGMENT";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -16,6 +18,16 @@ public class PlaybackActivity extends AppCompatActivity {
 
         ActionBar actionBar = getActionBar();
         if (actionBar != null) actionBar.setDisplayHomeAsUpEnabled(true);
+
+        PlaybackActivityFragment mPlaybackActivity = (PlaybackActivityFragment) getSupportFragmentManager()
+                .findFragmentByTag(KEY_PLAYBACK_FRAGMENT);
+
+        if (mPlaybackActivity == null) {
+            mPlaybackActivity = new PlaybackActivityFragment();
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.playback_container, mPlaybackActivity, KEY_PLAYBACK_FRAGMENT)
+                    .commit();
+        }
     }
 
 

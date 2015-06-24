@@ -1,16 +1,10 @@
 package net.malwasandres.spotifystreamer;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-
 
 public class MainActivity extends AppCompatActivity {
 

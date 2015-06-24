@@ -150,10 +150,20 @@ public class TopTenTrackActivityFragment extends Fragment implements BaseAdapter
 
     @Override
     public void onItemClick(BaseViewModel model) {
-        Intent i = new Intent(getActivity(), PlaybackActivity.class);
-        i.putExtra(getString(R.string.key_spotify_playback_track_single),
+        Bundle b = new Bundle();
+        b.putInt(getString(R.string.key_spotify_playback_track_single),
                 mAdapter.getModels().indexOf(model));
-        i.putExtra(getString(R.string.key_track_list), mAdapter.getModels());
-        startActivity(i);
+        b.putParcelableArrayList(getString(R.string.key_track_list), mAdapter.getModels());
+
+        if (mUseTwoPaneLayout) {
+            PlaybackActivityFragment frag = new PlaybackActivityFragment();
+            frag.setUseTwoPaneLayout(true);
+            frag.setArguments(b);
+            frag.show(getFragmentManager(), "KEY_FRAGMENT_PLAYBACK");
+        } else {
+            Intent i = new Intent(getActivity(), PlaybackActivity.class);
+            i.putExtras(b);
+            startActivity(i);
+        }
     }
 }
