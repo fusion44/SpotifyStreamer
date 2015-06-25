@@ -172,7 +172,7 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
             frag.setArguments(b);
 
             fm.beginTransaction()
-                    .replace(R.id.top_ten_track_list_container, frag, TOP_TEN_TRACK_FRAGMENT_KEY)
+                    .replace(R.id.two_pane_track_list_container, frag, TOP_TEN_TRACK_FRAGMENT_KEY)
                     .commitAllowingStateLoss(); // not sure about this one.
         } else {
             Intent i = new Intent(getActivity(), TopTenTrackActivity.class);

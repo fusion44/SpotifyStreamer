@@ -15,19 +15,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        boolean twoPane = findViewById(R.id.search_container) != null;
+        boolean twoPane = findViewById(R.id.two_pane_track_list_container) != null;
 
-        MainActivityFragment mTripDetailFragment = (MainActivityFragment) getSupportFragmentManager()
+        MainActivityFragment mainFragment = (MainActivityFragment) getSupportFragmentManager()
                 .findFragmentByTag(MAIN_ACTIVITY_FRAGMENT_KEY);
 
-        if (mTripDetailFragment == null) {
-            mTripDetailFragment = new MainActivityFragment();
+        if (mainFragment == null) {
+            mainFragment = new MainActivityFragment();
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.search_container, mTripDetailFragment, MAIN_ACTIVITY_FRAGMENT_KEY)
+                    .add(R.id.search_container, mainFragment, MAIN_ACTIVITY_FRAGMENT_KEY)
                     .commit();
         }
 
-        mTripDetailFragment.setUseTwoPaneLayout(twoPane);
+        mainFragment.setUseTwoPaneLayout(twoPane);
     }
 
     @Override
