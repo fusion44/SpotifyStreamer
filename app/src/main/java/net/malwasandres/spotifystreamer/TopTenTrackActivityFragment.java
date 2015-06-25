@@ -80,6 +80,7 @@ public class TopTenTrackActivityFragment extends Fragment implements BaseAdapter
 
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
             String cc = prefs.getString(getString(R.string.key_country_code), "");
+            if (cc != null && cc.equals("")) cc = getString(R.string.key_language_default_value);
             countryCode.put("country", cc);
 
             spotify.getArtistTopTrack(artistId, countryCode, new Callback<Tracks>() {
