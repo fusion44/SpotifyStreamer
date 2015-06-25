@@ -1,16 +1,29 @@
 package net.malwasandres.spotifystreamer;
 
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 
 
 public class TopTenTrackActivity extends AppCompatActivity {
+    private static final String TOP_TEN_TRACK_FRAGMENT_KEY = "TOP_TEN_TRACK_FRAGMENT_KEY";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_top_ten_track);
+
+        TopTenTrackActivityFragment topTenFragment = (TopTenTrackActivityFragment) getSupportFragmentManager()
+                .findFragmentByTag(TOP_TEN_TRACK_FRAGMENT_KEY);
+
+        if (topTenFragment == null) {
+            topTenFragment = new TopTenTrackActivityFragment();
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.top_ten_container, topTenFragment, TOP_TEN_TRACK_FRAGMENT_KEY)
+                    .commit();
+        }
     }
 
 
