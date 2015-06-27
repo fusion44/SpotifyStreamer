@@ -25,11 +25,6 @@ public class PlaybackService extends Service implements
         MediaPlayer.OnInfoListener,
         MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener {
-    private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
-
-
-    ArrayList<Messenger> mClients = new ArrayList<Messenger>();
-
     static final int MSG_REGISTER_CLIENT = 1;
     static final int MSG_UNREGISTER_CLIENT = 2;
     static final int MSG_NEXT_TRACK = 3;
@@ -37,69 +32,23 @@ public class PlaybackService extends Service implements
     static final int MSG_TOGGLE_PLAY = 5;
     static final int MSG_SET_TRACKS = 6;
     static final int MSG_SET_PLAYBACK_POS = 7;
-    private int mStartPlaybackFrom = -1;
-
-    class IncomingHandler extends Handler {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MSG_REGISTER_CLIENT:
-                    mClients.add(msg.replyTo);
-                    break;
-                case MSG_UNREGISTER_CLIENT:
-                    mClients.remove(msg.replyTo);
-                    break;
-                case MSG_NEXT_TRACK:
-                    onNextTrack();
-                    break;
-                case MSG_PREVIOUS_TRACK:
-                    onPreviousTrack();
-                    break;
-                case MSG_TOGGLE_PLAY:
-                    onTogglePlay();
-                    break;
-                case MSG_SET_TRACKS:
-                    Bundle data = msg.getData();
-                    if (mTracks != null) mTracks.clear();
-                    msg.getData().setClassLoader(TrackModel.class.getClassLoader());
-                    mTracks = data.getParcelableArrayList(getString(R.string.key_track_list));
-                    TrackModel t = data.getParcelable(
-                            getString(R.string.key_spotify_playback_track_single));
-                    playTrack(t);
-                    mStartPlaybackFrom = -1;
-                    break;
-                case MSG_SET_PLAYBACK_POS:
-                    int pos = msg.getData().getInt(getString(R.string.key_playback_position));
-                    if (mMediaPlayer.isPlaying()) {
-                        mMediaPlayer.seekTo(pos * 1000);
-                    } else {
-                        if (mCurrentTrack != null) startPlay(mCurrentTrack);
-                        mStartPlaybackFrom = pos * 1000;
-                    }
-                default:
-                    super.handleMessage(msg);
-            }
-        }
-    }
-
+    private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
     /**
      * Target we publish for clients to send messages to IncomingHandler.
      */
     final Messenger mMessenger = new Messenger(new IncomingHandler());
+    private final ScheduledExecutorService mScheduler =
+            Executors.newScheduledThreadPool(1);
+    ArrayList<Messenger> mClients = new ArrayList<Messenger>();
+    private int mStartPlaybackFrom = -1;
 
     /*
      * Playback position updater
      */
-
-    private final ScheduledExecutorService mScheduler =
-            Executors.newScheduledThreadPool(1);
-
     private ScheduledFuture<?> mScheduledFuture;
-
     private MediaPlayer mMediaPlayer;
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
-
     public PlaybackService() {
 
     }
@@ -238,6 +187,49 @@ public class PlaybackService extends Service implements
                 mClients.get(0).send(Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_START));
             } catch (RemoteException e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    class IncomingHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_REGISTER_CLIENT:
+                    mClients.add(msg.replyTo);
+                    break;
+                case MSG_UNREGISTER_CLIENT:
+                    mClients.remove(msg.replyTo);
+                    break;
+                case MSG_NEXT_TRACK:
+                    onNextTrack();
+                    break;
+                case MSG_PREVIOUS_TRACK:
+                    onPreviousTrack();
+                    break;
+                case MSG_TOGGLE_PLAY:
+                    onTogglePlay();
+                    break;
+                case MSG_SET_TRACKS:
+                    Bundle data = msg.getData();
+                    if (mTracks != null) mTracks.clear();
+                    msg.getData().setClassLoader(TrackModel.class.getClassLoader());
+                    mTracks = data.getParcelableArrayList(getString(R.string.key_track_list));
+                    TrackModel t = data.getParcelable(
+                            getString(R.string.key_spotify_playback_track_single));
+                    playTrack(t);
+                    mStartPlaybackFrom = -1;
+                    break;
+                case MSG_SET_PLAYBACK_POS:
+                    int pos = msg.getData().getInt(getString(R.string.key_playback_position));
+                    if (mMediaPlayer.isPlaying()) {
+                        mMediaPlayer.seekTo(pos * 1000);
+                    } else {
+                        if (mCurrentTrack != null) startPlay(mCurrentTrack);
+                        mStartPlaybackFrom = pos * 1000;
+                    }
+                default:
+                    super.handleMessage(msg);
             }
         }
     }

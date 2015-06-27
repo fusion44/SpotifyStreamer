@@ -11,7 +11,6 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,76 +32,30 @@ import butterknife.OnClick;
  * A placeholder fragment containing a simple view.
  */
 public class PlaybackActivityFragment extends DialogFragment implements SeekBar.OnSeekBarChangeListener {
-    private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
-
     static final int MSG_CURRENT_TRACK = 1;
     static final int MSG_PLAYBACK_START = 2;
     static final int MSG_PLAYBACK_STOP = 3;
     static final int MSG_PLAYBACK_POSITION = 4;
     static final int MSG_TRACK_LENGTH = 5;
-    private boolean mUseTwoPaneLayout = false;
-
-    @OnClick(R.id.skipPreviousButton)
-    public void onSkipPreviousClick() {
-        Message msg = Message.obtain(null, PlaybackService.MSG_PREVIOUS_TRACK);
-        msg.replyTo = mMessenger;
-        try {
-            mServiceMessenger.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @OnClick(R.id.skipNextButton)
-    public void onSkipNextClick() {
-        Message msg = Message.obtain(null, PlaybackService.MSG_NEXT_TRACK);
-        msg.replyTo = mMessenger;
-        try {
-            mServiceMessenger.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @OnClick(R.id.playButton)
-    public void onPlayButton() {
-        Message msg = Message.obtain(null, PlaybackService.MSG_TOGGLE_PLAY);
-        msg.replyTo = mMessenger;
-        try {
-            mServiceMessenger.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-
-        /*if (true) mPlayButton.setImageResource(R.drawable.ic_av_pause);
-        else */
-    }
-
+    private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
+    /**
+     * Target we publish for clients to send messages to IncomingHandler.
+     */
+    final Messenger mMessenger = new Messenger(new IncomingHandler());
     @InjectView(R.id.playButton)
     ImageButton mPlayButton;
-
     @InjectView(R.id.playbackStartTextView)
     TextView mStartTextView;
-
     @InjectView(R.id.playbackEndTextView)
     TextView mEndTextView;
-
     @InjectView(R.id.playbackBandNameTextView)
     TextView mArtistNameTextView;
-
     @InjectView(R.id.playbackAlbumNameTextView)
     TextView mAlbumNameTextView;
-
     @InjectView(R.id.playbackAlbumImageView)
     ImageView mAlbumImageView;
-
     @InjectView(R.id.seekBar)
     SeekBar mPositionSeekbar;
-
-    private ArrayList<TrackModel> mTracks;
-    private TrackModel mCurrentTrack;
-
-
     /**
      * Messenger for communicating with service.
      */
@@ -111,41 +64,9 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
      * Flag indicating whether we have called bind on the service.
      */
     boolean mIsBound;
-
-    /**
-     * Handler of incoming messages from service.
-     */
-    class IncomingHandler extends Handler {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MSG_CURRENT_TRACK:
-                    msg.getData().setClassLoader(TrackModel.class.getClassLoader());
-                    TrackModel t = msg.getData().getParcelable(
-                            getString(R.string.key_spotify_playback_track_single));
-                    mCurrentTrack = t;
-                    setupUi();
-                    break;
-                case MSG_PLAYBACK_START:
-                    mPlayButton.setImageResource(R.drawable.ic_av_pause);
-                    break;
-                case MSG_PLAYBACK_STOP:
-                    mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
-                    break;
-                case MSG_PLAYBACK_POSITION:
-                    int pos = msg.getData().getInt(getString(R.string.key_playback_position)) + 500;
-                    mPositionSeekbar.setProgress(pos / 1000);
-                default:
-                    super.handleMessage(msg);
-            }
-        }
-    }
-
-    /**
-     * Target we publish for clients to send messages to IncomingHandler.
-     */
-    final Messenger mMessenger = new Messenger(new IncomingHandler());
-
+    private boolean mUseTwoPaneLayout = false;
+    private ArrayList<TrackModel> mTracks;
+    private TrackModel mCurrentTrack;
     /**
      * Class for interacting with the main interface of the service.
      */
@@ -187,8 +108,43 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
             mServiceMessenger = null;
         }
     };
-
     public PlaybackActivityFragment() {
+    }
+
+    @OnClick(R.id.skipPreviousButton)
+    public void onSkipPreviousClick() {
+        Message msg = Message.obtain(null, PlaybackService.MSG_PREVIOUS_TRACK);
+        msg.replyTo = mMessenger;
+        try {
+            mServiceMessenger.send(msg);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @OnClick(R.id.skipNextButton)
+    public void onSkipNextClick() {
+        Message msg = Message.obtain(null, PlaybackService.MSG_NEXT_TRACK);
+        msg.replyTo = mMessenger;
+        try {
+            mServiceMessenger.send(msg);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @OnClick(R.id.playButton)
+    public void onPlayButton() {
+        Message msg = Message.obtain(null, PlaybackService.MSG_TOGGLE_PLAY);
+        msg.replyTo = mMessenger;
+        try {
+            mServiceMessenger.send(msg);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+        /*if (true) mPlayButton.setImageResource(R.drawable.ic_av_pause);
+        else */
     }
 
     public void setUseTwoPaneLayout(boolean useTwoPane) {
@@ -314,5 +270,34 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         mPositionSeekbar.setOnSeekBarChangeListener(this);
 
         return v;
+    }
+
+    /**
+     * Handler of incoming messages from service.
+     */
+    class IncomingHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_CURRENT_TRACK:
+                    msg.getData().setClassLoader(TrackModel.class.getClassLoader());
+                    TrackModel t = msg.getData().getParcelable(
+                            getString(R.string.key_spotify_playback_track_single));
+                    mCurrentTrack = t;
+                    setupUi();
+                    break;
+                case MSG_PLAYBACK_START:
+                    mPlayButton.setImageResource(R.drawable.ic_av_pause);
+                    break;
+                case MSG_PLAYBACK_STOP:
+                    mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
+                    break;
+                case MSG_PLAYBACK_POSITION:
+                    int pos = msg.getData().getInt(getString(R.string.key_playback_position)) + 500;
+                    mPositionSeekbar.setProgress(pos / 1000);
+                default:
+                    super.handleMessage(msg);
+            }
+        }
     }
 }

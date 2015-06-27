@@ -7,6 +7,21 @@ import kaaes.spotify.webapi.android.models.Track;
 
 // TODO: look into replacing with AutoParcel https://github.com/frankiesardo/auto-parcel
 public class TrackModel extends BaseViewModel implements Parcelable {
+    public static final Parcelable.Creator<TrackModel> CREATOR = new Parcelable.Creator<TrackModel>() {
+        @Override
+        public TrackModel createFromParcel(Parcel in) {
+            return new TrackModel(in);
+        }
+
+        public TrackModel createFromTrack(Track in) {
+            return new TrackModel(in);
+        }
+
+        @Override
+        public TrackModel[] newArray(int size) {
+            return new TrackModel[size];
+        }
+    };
     public String id;
     public String name;
     public String imageUrl;
@@ -52,20 +67,4 @@ public class TrackModel extends BaseViewModel implements Parcelable {
         dest.writeString(previewUrl);
         dest.writeInt(length);
     }
-
-    public static final Parcelable.Creator<TrackModel> CREATOR = new Parcelable.Creator<TrackModel>() {
-        @Override
-        public TrackModel createFromParcel(Parcel in) {
-            return new TrackModel(in);
-        }
-
-        public TrackModel createFromTrack(Track in) {
-            return new TrackModel(in);
-        }
-
-        @Override
-        public TrackModel[] newArray(int size) {
-            return new TrackModel[size];
-        }
-    };
 }

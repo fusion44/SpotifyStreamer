@@ -3,25 +3,28 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:paddingBottom="@dimen/activity_vertical_margin"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".MainActivityFragment">
+    tools:context=".MainActivityFragment">
 
     <android.support.design.widget.TextInputLayout
+        android:id="@+id/searchBoxDeco"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:id="@+id/searchBoxDeco">
+        android:orientation="horizontal">
+
         <EditText
+            android:id="@+id/searchBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/searchBox"
             android:layout_gravity="center_horizontal"
             android:hint="@string/search_here_hint"
             android:singleLine="true"
             tools:text="We butter the bread with butter" />
     </android.support.design.widget.TextInputLayout>
+
     <android.support.v7.widget.RecyclerView
         android:id="@+id/artistSearchResultList"
         android:layout_width="match_parent"

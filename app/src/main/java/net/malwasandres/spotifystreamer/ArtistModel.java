@@ -2,17 +2,26 @@ package net.malwasandres.spotifystreamer;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.v7.widget.RecyclerView;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.TextView;
 
-import butterknife.ButterKnife;
-import butterknife.InjectView;
 import kaaes.spotify.webapi.android.models.Artist;
 
 // TODO: look into replacing with AutoParcel https://github.com/frankiesardo/auto-parcel
 public class ArtistModel extends BaseViewModel implements Parcelable {
+    public static final Creator<ArtistModel> CREATOR = new Creator<ArtistModel>() {
+        @Override
+        public ArtistModel createFromParcel(Parcel in) {
+            return new ArtistModel(in);
+        }
+
+        public ArtistModel createFromArtist(Artist in) {
+            return new ArtistModel(in);
+        }
+
+        @Override
+        public ArtistModel[] newArray(int size) {
+            return new ArtistModel[size];
+        }
+    };
     public String id;
     public String name;
     public String imageUrl;
@@ -43,20 +52,4 @@ public class ArtistModel extends BaseViewModel implements Parcelable {
         dest.writeString(name);
         dest.writeString(imageUrl);
     }
-
-    public static final Creator<ArtistModel> CREATOR = new Creator<ArtistModel>() {
-        @Override
-        public ArtistModel createFromParcel(Parcel in) {
-            return new ArtistModel(in);
-        }
-
-        public ArtistModel createFromArtist(Artist in) {
-            return new ArtistModel(in);
-        }
-
-        @Override
-        public ArtistModel[] newArray(int size) {
-            return new ArtistModel[size];
-        }
-    };
 }

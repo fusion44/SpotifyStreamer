@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="horizontal"
     android:layout_width="match_parent"
     android:layout_height="@dimen/materialListItemHeight"
-    android:gravity="center_vertical">
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         android:layout_gravity="start|center_vertical"
-        android:paddingStart="@dimen/materialListItemSecondarySidePadding"
+        android:orientation="vertical"
         android:paddingLeft="@dimen/materialListItemSecondarySidePadding"
-        android:paddingRight="@dimen/materialListItemSecondarySidePadding">
+        android:paddingRight="@dimen/materialListItemSecondarySidePadding"
+        android:paddingStart="@dimen/materialListItemSecondarySidePadding">
 
         <TextView
+            android:id="@+id/trackNameTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             tools:text="Track Name Goes here"
-            android:id="@+id/trackNameTextView"
 
-             />
+            />
+
         <TextView
+            android:id="@+id/playbackAlbumNameTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            tools:text="Album Name Goes here"
-            android:id="@+id/playbackAlbumNameTextView"
-             />
+            tools:text="Album Name Goes here" />
 
     </LinearLayout>
 
     <ImageView
+        android:id="@+id/playbackAlbumImageView"
         android:layout_width="@dimen/materialImageDimensionSquare"
         android:layout_height="@dimen/materialImageDimensionSquare"
-        android:id="@+id/playbackAlbumImageView"
-        android:src="@mipmap/ic_launcher"
         android:layout_gravity="start|center_vertical"
-        android:contentDescription="@string/album_cover_image"/>
+        android:contentDescription="@string/album_cover_image"
+        android:src="@mipmap/ic_launcher" />
 
 </FrameLayout>

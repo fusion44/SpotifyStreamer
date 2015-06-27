@@ -1,9 +1,9 @@
 package net.malwasandres.spotifystreamer;
 
 import android.content.Intent;
+import android.os.Bundle;
 import android.support.design.widget.TextInputLayout;
 import android.support.v4.app.Fragment;
-import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
@@ -18,7 +18,6 @@ import java.util.ArrayList;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
-import butterknife.OnTextChanged;
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.ArtistsPager;
@@ -34,17 +33,18 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
     private static final String TOP_TEN_TRACK_FRAGMENT_KEY = "TOP_TEN_TRACK_FRAGMENT_KEY";
     public static String LOG_TAG = MainActivityFragment.class.getSimpleName();
     private static int MAX_SEARCH_RESULTS = 10;
-
-    private SpotifyService mSpotify;
-
     @InjectView(R.id.searchBoxDeco)
     TextInputLayout mSearchBoxDeco;
     @InjectView(R.id.searchBox)
     EditText mSearchBox;
     @InjectView(R.id.artistSearchResultList)
     RecyclerView mSearchResultList;
+    private SpotifyService mSpotify;
     private ArtistListAdapter mAdapter;
     private boolean mUseTwoPaneLayout;
+
+    public MainActivityFragment() {
+    }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -104,9 +104,6 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
 
     private void onSpotifyError(String message) {
         Log.e(LOG_TAG, message);
-    }
-
-    public MainActivityFragment() {
     }
 
     @Override

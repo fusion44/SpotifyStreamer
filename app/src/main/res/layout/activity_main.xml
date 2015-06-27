@@ -4,5 +4,4 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="net.malwasandres.spotifystreamer.MainActivityFragment"
-    tools:layout="@layout/fragment_main">
-</FrameLayout>
+    tools:layout="@layout/fragment_main"></FrameLayout>
