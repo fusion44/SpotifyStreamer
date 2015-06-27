@@ -42,6 +42,7 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
     private SpotifyService mSpotify;
     private ArtistListAdapter mAdapter;
     private boolean mUseTwoPaneLayout;
+    TopTenTrackActivityFragment mTopTenFragment;
 
     public MainActivityFragment() {
     }
@@ -58,46 +59,53 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
         // Next version of retrofit will have a method for canceling pending requests
         // https://github.com/square/retrofit/issues/297
 
-        if (query.length() > 2) {
-            mSpotify.searchArtists(query, new Callback<ArtistsPager>() {
-                @Override
-                public void success(final ArtistsPager artistsPager, Response response) {
-                    final ArrayList<ArtistModel> artistList =
-                            new ArrayList<>(artistsPager.artists.items.size());
+        mSpotify.searchArtists(query, new Callback<ArtistsPager>() {
+            @Override
+            public void success(final ArtistsPager artistsPager, Response response) {
+                final ArrayList<ArtistModel> artistList =
+                        new ArrayList<>(artistsPager.artists.items.size());
 
-                    for (int i = 0; i < artistsPager.artists.items.size(); i++) {
-                        artistList.add(new ArtistModel(artistsPager.artists.items.get(i)));
+                for (int i = 0; i < artistsPager.artists.items.size(); i++) {
+                    artistList.add(new ArtistModel(artistsPager.artists.items.get(i)));
 
-                        if (i > MAX_SEARCH_RESULTS) break;
+                    if (i > MAX_SEARCH_RESULTS) break;
+                }
+
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        loadFinished(artistList);
                     }
+                });
+            }
 
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            loadFinished(artistList);
-                        }
-                    });
-                }
-
-                @Override
-                public void failure(final RetrofitError error) {
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            onSpotifyError(error.getMessage());
-                        }
-                    });
-                }
-            });
-        }
+            @Override
+            public void failure(final RetrofitError error) {
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        onSpotifyError(error.getMessage());
+                    }
+                });
+            }
+        });
     }
 
     private void loadFinished(ArrayList<ArtistModel> items) {
         mAdapter.clear();
         if (items.size() == 0) {
-            mSearchBoxDeco.setError(getActivity().getString(R.string.no_artist_found));
+            setErrorState(true);
         } else {
             mAdapter.replaceModels(items);
+            setErrorState(false);
+        }
+    }
+
+    private void setErrorState(boolean error) {
+        if (error) {
+            mSearchBoxDeco.setError(getActivity().getString(R.string.no_artist_found));
+            mAdapter.clear();
+        } else {
             mSearchBoxDeco.setErrorEnabled(false);
         }
     }
@@ -163,12 +171,12 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
 
         if (mUseTwoPaneLayout) {
             android.support.v4.app.FragmentManager fm = getActivity().getSupportFragmentManager();
-            TopTenTrackActivityFragment frag = new TopTenTrackActivityFragment();
-            frag.setUseTwoPaneLayout(mUseTwoPaneLayout);
-            frag.setArguments(b);
+            mTopTenFragment = new TopTenTrackActivityFragment();
+            mTopTenFragment.setUseTwoPaneLayout(mUseTwoPaneLayout);
+            mTopTenFragment.setArguments(b);
 
             fm.beginTransaction()
-                    .replace(R.id.two_pane_track_list_container, frag, TOP_TEN_TRACK_FRAGMENT_KEY)
+                    .replace(R.id.two_pane_track_list_container, mTopTenFragment, TOP_TEN_TRACK_FRAGMENT_KEY)
                     .commitAllowingStateLoss(); // not sure about this one.
         } else {
             Intent i = new Intent(getActivity(), TopTenTrackActivity.class);
@@ -184,7 +192,12 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
 
     @Override
     public void onTextChanged(CharSequence query, int i, int i1, int i2) {
-        querySpotify(query.toString());
+        if (query.length() > 2) {
+            querySpotify(query.toString());
+        } else {
+            setErrorState(true);
+        }
+
     }
 
     @Override
