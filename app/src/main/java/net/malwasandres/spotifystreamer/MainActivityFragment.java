@@ -12,11 +12,13 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 
 import java.util.ArrayList;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import butterknife.OnTextChanged;
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.ArtistsPager;
@@ -28,7 +30,7 @@ import retrofit.client.Response;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class MainActivityFragment extends Fragment implements ArtistListAdapter.ClickListener {
+public class MainActivityFragment extends Fragment implements ArtistListAdapter.ClickListener, TextWatcher {
     private static final String TOP_TEN_TRACK_FRAGMENT_KEY = "TOP_TEN_TRACK_FRAGMENT_KEY";
     public static String LOG_TAG = MainActivityFragment.class.getSimpleName();
     private static int MAX_SEARCH_RESULTS = 10;
@@ -37,6 +39,8 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
 
     @InjectView(R.id.searchBoxDeco)
     TextInputLayout mSearchBoxDeco;
+    @InjectView(R.id.searchBox)
+    EditText mSearchBox;
     @InjectView(R.id.artistSearchResultList)
     RecyclerView mSearchResultList;
     private ArtistListAdapter mAdapter;
@@ -49,60 +53,43 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
                 getActivity().getString(R.string.key_artist_search_result), mAdapter.getModels());
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
+    private void querySpotify(String query) {
+        // TODO: do not flood Spotifys servers with useless requests while user is typing.
+        // Next version of retrofit will have a method for canceling pending requests
+        // https://github.com/square/retrofit/issues/297
 
-        mSearchBoxDeco.getEditText().addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+        if (query.length() > 2) {
+            mSpotify.searchArtists(query, new Callback<ArtistsPager>() {
+                @Override
+                public void success(final ArtistsPager artistsPager, Response response) {
+                    final ArrayList<ArtistModel> artistList =
+                            new ArrayList<>(artistsPager.artists.items.size());
 
-            }
+                    for (int i = 0; i < artistsPager.artists.items.size(); i++) {
+                        artistList.add(new ArtistModel(artistsPager.artists.items.get(i)));
 
-            @Override
-            public void onTextChanged(CharSequence query, int i, int i1, int i2) {
-                // TODO: do not flood Spotifys servers with useless requests while user is typing.
-                // Next version of retrofit will have a method for canceling pending requests
-                // https://github.com/square/retrofit/issues/297
-                if (query.length() > 2) {
-                    mSpotify.searchArtists(query.toString(), new Callback<ArtistsPager>() {
+                        if (i > MAX_SEARCH_RESULTS) break;
+                    }
+
+                    getActivity().runOnUiThread(new Runnable() {
                         @Override
-                        public void success(final ArtistsPager artistsPager, Response response) {
-                            final ArrayList<ArtistModel> artistList =
-                                    new ArrayList<>(artistsPager.artists.items.size());
-
-                            for (int i = 0; i < artistsPager.artists.items.size(); i++) {
-                                artistList.add(new ArtistModel(artistsPager.artists.items.get(i)));
-
-                                if (i > MAX_SEARCH_RESULTS) break;
-                            }
-
-                            getActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    loadFinished(artistList);
-                                }
-                            });
-                        }
-
-                        @Override
-                        public void failure(final RetrofitError error) {
-                            getActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    onSpotifyError(error.getMessage());
-                                }
-                            });
+                        public void run() {
+                            loadFinished(artistList);
                         }
                     });
                 }
-            }
 
-            @Override
-            public void afterTextChanged(Editable editable) {
-
-            }
-        });
+                @Override
+                public void failure(final RetrofitError error) {
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            onSpotifyError(error.getMessage());
+                        }
+                    });
+                }
+            });
+        }
     }
 
     private void loadFinished(ArrayList<ArtistModel> items) {
@@ -150,6 +137,18 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
     }
 
     @Override
+    public void onPause() {
+        super.onPause();
+        mSearchBox.removeTextChangedListener(this);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mSearchBox.addTextChangedListener(this);
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         ButterKnife.reset(this);
@@ -179,5 +178,20 @@ public class MainActivityFragment extends Fragment implements ArtistListAdapter.
             i.putExtras(b);
             startActivity(i);
         }
+    }
+
+    @Override
+    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+    }
+
+    @Override
+    public void onTextChanged(CharSequence query, int i, int i1, int i2) {
+        querySpotify(query.toString());
+    }
+
+    @Override
+    public void afterTextChanged(Editable editable) {
+
     }
 }
