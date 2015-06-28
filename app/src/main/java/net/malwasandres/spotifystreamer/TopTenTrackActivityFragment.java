@@ -140,7 +140,7 @@ public class TopTenTrackActivityFragment extends Fragment implements BaseAdapter
 
     private void setArtistTitle() {
         ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
-        if (actionBar != null) {
+        if (actionBar != null && mAdapter.getModels().size() > 0) {
             actionBar.setSubtitle(mAdapter.getModels().get(0).artistName);
         }
     }
@@ -157,10 +157,9 @@ public class TopTenTrackActivityFragment extends Fragment implements BaseAdapter
         b.putParcelableArrayList(getString(R.string.key_track_list), mAdapter.getModels());
 
         if (mUseTwoPaneLayout) {
-            PlaybackActivityFragment frag = new PlaybackActivityFragment();
+            PlaybackActivityFragment frag = PlaybackActivityFragment.newInstance(b);
             frag.setUseTwoPaneLayout(true);
-            frag.setArguments(b);
-            frag.show(getFragmentManager(), "KEY_FRAGMENT_PLAYBACK");
+            frag.show(getFragmentManager(), getActivity().getString(R.string.key_fragment_playback));
         } else {
             Intent i = new Intent(getActivity(), PlaybackActivity.class);
             i.putExtras(b);

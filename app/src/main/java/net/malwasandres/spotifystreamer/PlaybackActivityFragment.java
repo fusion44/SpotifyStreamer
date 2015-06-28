@@ -108,6 +108,8 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
             mServiceMessenger = null;
         }
     };
+    private Context mContext;
+
     public PlaybackActivityFragment() {
     }
 
@@ -152,8 +154,17 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     }
 
     @Override
+    public void onDestroyView() {
+        // see here: http://stackoverflow.com/questions/14657490/how-to-properly-retain-a-dialogfragment-through-rotation
+        if (getDialog() != null && getRetainInstance())
+            getDialog().setDismissMessage(null);
+        super.onDestroyView();
+    }
+
+    @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mContext = getActivity().getApplicationContext();
         int trackId;
         Bundle b;
 
@@ -164,6 +175,15 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         trackId = b.getInt(getString(R.string.key_spotify_playback_track_single), -1);
         if (trackId == -1) mCurrentTrack = mTracks.get(0);
         else mCurrentTrack = mTracks.get(trackId);
+        setRetainInstance(true);
+
+        doBindService();
+    }
+
+    public static PlaybackActivityFragment newInstance(Bundle args) {
+        PlaybackActivityFragment frag = new PlaybackActivityFragment();
+        frag.setArguments(args);
+        return frag;
     }
 
     @Override
@@ -172,31 +192,21 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        doBindService();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
+    public void onDestroy() {
+        super.onDestroy();
         doUnbindService();
-    }
-
-    @Override
-    public void onViewCreated(View view, Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        setupUi();
     }
 
     void doBindService() {
         // Establish a connection with the service.  We use an explicit
         // class name because there is no reason to be able to let other
         // applications replace our component.
-        Intent i = new Intent(getActivity(), PlaybackService.class);
+        Intent i = new Intent(mContext, PlaybackService.class);
         i.putExtra(getString(R.string.key_track_list), mTracks);
         i.putExtra(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
-        getActivity().bindService(i, mConnection, Context.BIND_AUTO_CREATE);
+        mContext.startService(i);
+        mContext.bindService(new Intent(mContext, PlaybackService.class),
+                mConnection, Context.BIND_AUTO_CREATE);
         mIsBound = true;
     }
 
@@ -216,8 +226,8 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
                 }
             }
 
-            // Detach our existing connection.
-            getActivity().unbindService(mConnection);
+            mContext.unbindService(mConnection);
+            mContext.stopService(new Intent(mContext, PlaybackService.class));
             mIsBound = false;
         }
     }
@@ -266,9 +276,8 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_playback, container, false);
         ButterKnife.inject(this, v);
-
         mPositionSeekbar.setOnSeekBarChangeListener(this);
-
+        setupUi();
         return v;
     }
 

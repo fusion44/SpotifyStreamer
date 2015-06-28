@@ -49,6 +49,7 @@ public class PlaybackService extends Service implements
     private MediaPlayer mMediaPlayer;
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
+
     public PlaybackService() {
 
     }
@@ -102,6 +103,17 @@ public class PlaybackService extends Service implements
         }
     }
 
+    @Override
+    public void onDestroy() {
+        if (mMediaPlayer != null) {
+            mMediaPlayer.stop();
+            mMediaPlayer.release();
+            mMediaPlayer = null;
+        }
+
+        super.onDestroy();
+    }
+
     private void startScheduler() {
         stopScheduler();
         mScheduledFuture = mScheduler.scheduleAtFixedRate(new Runnable() {
@@ -133,16 +145,6 @@ public class PlaybackService extends Service implements
     @Override
     public IBinder onBind(Intent intent) {
         return mMessenger.getBinder();
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.stop();
-            mMediaPlayer.release();
-            mMediaPlayer = null;
-        }
-        return false;
     }
 
     @Override
