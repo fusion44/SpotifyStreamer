@@ -44,10 +44,10 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     final Messenger mMessenger = new Messenger(new IncomingHandler());
     @InjectView(R.id.playButton)
     ImageButton mPlayButton;
-    @InjectView(R.id.playbackStartTextView)
-    TextView mStartTextView;
-    @InjectView(R.id.playbackEndTextView)
-    TextView mEndTextView;
+    @InjectView(R.id.currentPositionTextView)
+    TextView mCurrentPositionTextView;
+    @InjectView(R.id.trackLengthTextView)
+    TextView mTrackLengthTextView;
     @InjectView(R.id.playbackBandNameTextView)
     TextView mArtistNameTextView;
     @InjectView(R.id.playbackAlbumNameTextView)
@@ -240,10 +240,19 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
                     .load(mCurrentTrack.imageUrl)
                     .into(mAlbumImageView);
         }
-        mEndTextView.setText(String.valueOf(mCurrentTrack.length / 1000));
+
+        String timeString = getTimeString(mCurrentTrack.length / 1000);
+        mTrackLengthTextView.setText(timeString);
         mPlayButton.setImageResource(R.drawable.ic_av_pause);
         mPositionSeekbar.setMax(mCurrentTrack.length / 1000);
         mPositionSeekbar.setProgress(0);
+    }
+
+    private String getTimeString(int seconds) {
+        int minutes = seconds / 60;
+        seconds = seconds - minutes * 60;
+        if(seconds < 10) return minutes + ":0" + seconds;
+        else return minutes + ":" + seconds;
     }
 
     @Override
@@ -290,9 +299,8 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
             switch (msg.what) {
                 case MSG_CURRENT_TRACK:
                     msg.getData().setClassLoader(TrackModel.class.getClassLoader());
-                    TrackModel t = msg.getData().getParcelable(
+                    mCurrentTrack = msg.getData().getParcelable(
                             getString(R.string.key_spotify_playback_track_single));
-                    mCurrentTrack = t;
                     setupUi();
                     break;
                 case MSG_PLAYBACK_START:
@@ -302,8 +310,9 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
                     mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
                     break;
                 case MSG_PLAYBACK_POSITION:
-                    int pos = msg.getData().getInt(getString(R.string.key_playback_position)) + 500;
-                    mPositionSeekbar.setProgress(pos / 1000);
+                    int seconds = (msg.getData().getInt(getString(R.string.key_playback_position)) + 500) / 1000;
+                    mPositionSeekbar.setProgress(seconds);
+                    mCurrentPositionTextView.setText(getTimeString(seconds));
                 default:
                     super.handleMessage(msg);
             }

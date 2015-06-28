@@ -78,6 +78,9 @@ public class PlaybackService extends Service implements
         try {
             mMediaPlayer.reset();
             mMediaPlayer.setDataSource(track.previewUrl);
+            // uncomment this to play the national anthem of Norway :-)
+            // for testing the player with a clip longer than 30 seconds
+            //mMediaPlayer.setDataSource("http://www.noiseaddicts.com/samples_1w72b820/4239.mp3");
             mMediaPlayer.prepare();
         } catch (IOException e) {
             e.printStackTrace();
