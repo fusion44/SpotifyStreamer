@@ -52,6 +52,8 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     TextView mArtistNameTextView;
     @InjectView(R.id.playbackAlbumNameTextView)
     TextView mAlbumNameTextView;
+    @InjectView(R.id.playbackTrackNameTextView)
+    TextView mTrackNameTextView;
     @InjectView(R.id.playbackAlbumImageView)
     ImageView mAlbumImageView;
     @InjectView(R.id.seekBar)
@@ -235,6 +237,7 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     private void setupUi() {
         mArtistNameTextView.setText(mCurrentTrack.artistName);
         mAlbumNameTextView.setText(mCurrentTrack.albumName);
+        mTrackNameTextView.setText(mCurrentTrack.name);
         if (mCurrentTrack.imageUrl != null && !mCurrentTrack.imageUrl.equals("")) {
             Picasso.with(getActivity())
                     .load(mCurrentTrack.imageUrl)
