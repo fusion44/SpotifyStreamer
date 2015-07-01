@@ -11,7 +11,12 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.view.MenuItemCompat;
+import android.support.v7.widget.ShareActionProvider;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -26,6 +31,7 @@ import java.util.ArrayList;
 import butterknife.ButterKnife;
 import butterknife.InjectView;
 import butterknife.OnClick;
+import butterknife.Optional;
 
 
 /**
@@ -58,6 +64,10 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     ImageView mAlbumImageView;
     @InjectView(R.id.seekBar)
     SeekBar mPositionSeekbar;
+    @InjectView(R.id.shareTrackButton)
+    @Optional // only available in two pane view
+            ImageButton mShareTrackButton;
+
     /**
      * Messenger for communicating with service.
      */
@@ -69,6 +79,7 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     private boolean mUseTwoPaneLayout = false;
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
+    private ShareActionProvider mShareActionProvider;
     /**
      * Class for interacting with the main interface of the service.
      */
@@ -151,6 +162,13 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         else */
     }
 
+    @OnClick(R.id.shareTrackButton)
+    @Optional
+    public void onShareTrackButton() {
+        Intent i = createShareIntent();
+        getActivity().startActivity(i);
+    }
+
     public void setUseTwoPaneLayout(boolean useTwoPane) {
         mUseTwoPaneLayout = useTwoPane;
     }
@@ -178,6 +196,10 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         if (trackId == -1) mCurrentTrack = mTracks.get(0);
         else mCurrentTrack = mTracks.get(trackId);
         setRetainInstance(true);
+
+        // use the share action provider in action bar only in phone mode
+        // in tablet mode its embedded in the playback layout
+        if (!mUseTwoPaneLayout) setHasOptionsMenu(true);
 
         doBindService();
     }
@@ -254,7 +276,7 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     private String getTimeString(int seconds) {
         int minutes = seconds / 60;
         seconds = seconds - minutes * 60;
-        if(seconds < 10) return minutes + ":0" + seconds;
+        if (seconds < 10) return minutes + ":0" + seconds;
         else return minutes + ":" + seconds;
     }
 
@@ -293,6 +315,27 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         return v;
     }
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        getActivity().getMenuInflater().inflate(R.menu.menu_playback, menu);
+        MenuItem item = menu.findItem(R.id.action_share);
+        mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    private Intent createShareIntent() {
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("text/plain");
+        String subject = String.format(getResources().getString(R.string.share_track_text),
+                mCurrentTrack.name, mCurrentTrack.artistName);
+        shareIntent.putExtra(Intent.EXTRA_TEXT, subject + mCurrentTrack.previewUrl);
+        return shareIntent;
+    }
+
+    public void doShareTrack(Intent shareIntent) {
+        if (mShareActionProvider != null) mShareActionProvider.setShareIntent(shareIntent);
+    }
+
     /**
      * Handler of incoming messages from service.
      */
@@ -304,6 +347,7 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
                     msg.getData().setClassLoader(TrackModel.class.getClassLoader());
                     mCurrentTrack = msg.getData().getParcelable(
                             getString(R.string.key_spotify_playback_track_single));
+                    if (!mUseTwoPaneLayout) doShareTrack(createShareIntent());
                     setupUi();
                     break;
                 case MSG_PLAYBACK_START:
