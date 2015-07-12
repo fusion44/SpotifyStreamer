@@ -37,6 +37,7 @@
         <activity
             android:name=".PlaybackActivity"
             android:label="@string/title_activity_playback"
+            android:launchMode="singleInstance"
             android:parentActivityName=".TopTenTrackActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
@@ -46,7 +47,16 @@
         <service
             android:name=".PlaybackService"
             android:enabled="true"
-            android:process=":remote"></service>
+            android:process=":remote"
+            android:permission="android.permission.MEDIA_CONTENT_CONTROL">
+            <intent-filter>
+                <action android:name="net.malwasandres.spotifystreamer.action_play"/>
+                <action android:name="net.malwasandres.spotifystreamer.action_pause"/>
+                <action android:name="net.malwasandres.spotifystreamer.action_stop"/>
+                <action android:name="net.malwasandres.spotifystreamer.action_next"/>
+                <action android:name="net.malwasandres.spotifystreamer.action_previous"/>
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

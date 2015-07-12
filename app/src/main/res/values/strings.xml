@@ -29,4 +29,5 @@
     <string name="action_share">Share Track</string>
     <string name="share_track_text">Playing %1$s by %2$s:\n\n</string>
     <string name="share_current_playing_track">Share current playing track</string>
+    <string name="key_media_session">SPOTIFY_MEDIA_SESSION</string>
 </resources>

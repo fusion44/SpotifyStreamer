@@ -212,7 +212,32 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
 
     @Override
     public void onStart() {
+        if (mServiceMessenger != null) {
+            try {
+                Message msg = Message.obtain(null,
+                        PlaybackService.MSG_HIDE_NOTIFICATION);
+                msg.replyTo = mMessenger;
+                mServiceMessenger.send(msg);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
         super.onStart();
+    }
+
+    @Override
+    public void onPause() {
+        if (mServiceMessenger != null) {
+            try {
+                Message msg = Message.obtain(null,
+                        PlaybackService.MSG_SHOW_NOTIFICATION);
+                msg.replyTo = mMessenger;
+                mServiceMessenger.send(msg);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+        super.onPause();
     }
 
     @Override

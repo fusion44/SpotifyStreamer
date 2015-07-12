@@ -25,6 +25,7 @@ public class TrackModel extends BaseViewModel implements Parcelable {
     public String id;
     public String name;
     public String imageUrl;
+    public String artistId;
     public String artistName;
     public String albumName;
     public String previewUrl;
@@ -34,6 +35,7 @@ public class TrackModel extends BaseViewModel implements Parcelable {
         id = in.readString();
         name = in.readString();
         imageUrl = in.readString();
+        artistId = in.readString();
         artistName = in.readString();
         albumName = in.readString();
         previewUrl = in.readString();
@@ -46,6 +48,7 @@ public class TrackModel extends BaseViewModel implements Parcelable {
         name = in.name;
         if (in.album.images.size() > 0) imageUrl = in.album.images.get(0).url;
         if (in.artists.size() > 0) artistName = in.artists.get(0).name;
+        artistId = in.artists.get(0).id;
         albumName = in.album.name;
         previewUrl = in.preview_url;
         length = 0;
@@ -62,6 +65,7 @@ public class TrackModel extends BaseViewModel implements Parcelable {
         dest.writeString(id);
         dest.writeString(name);
         dest.writeString(imageUrl);
+        dest.writeString(artistId);
         dest.writeString(artistName);
         dest.writeString(albumName);
         dest.writeString(previewUrl);

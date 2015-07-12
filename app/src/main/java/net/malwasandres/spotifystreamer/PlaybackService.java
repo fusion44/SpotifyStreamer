@@ -1,7 +1,12 @@
 package net.malwasandres.spotifystreamer;
 
-import android.app.Service;
+import android.app.IntentService;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
@@ -10,6 +15,12 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
+import android.util.Log;
+
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 
 // http://code.tutsplus.com/tutorials/create-a-music-player-on-android-song-playback--mobile-22778
-public class PlaybackService extends Service implements
+public class PlaybackService extends IntentService implements
         MediaPlayer.OnPreparedListener,
         MediaPlayer.OnInfoListener,
         MediaPlayer.OnErrorListener,
@@ -32,7 +43,18 @@ public class PlaybackService extends Service implements
     static final int MSG_TOGGLE_PLAY = 5;
     static final int MSG_SET_TRACKS = 6;
     static final int MSG_SET_PLAYBACK_POS = 7;
+    static final int MSG_SHOW_NOTIFICATION = 8;
+    static final int MSG_HIDE_NOTIFICATION = 9;
+
+    public static final String ACTION_PLAY = "net.malwasandres.spotifystreamer.action_play";
+    public static final String ACTION_PAUSE = "net.malwasandres.spotifystreamer.action_pause";
+    public static final String ACTION_NEXT = "net.malwasandres.spotifystreamer.action_next";
+    public static final String ACTION_PREVIOUS = "net.malwasandres.spotifystreamer.action_previous";
+    public static final String ACTION_STOP = "net.malwasandres.spotifystreamer.action_stop";
+    public static final String ACTION_START_PLAYBACK_ACTIVITY = "net.malwasandres.spotifystreamer.action_start_activity";
+
     private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
+    private static final int NOTIFICATION_ID = 1234;
     /**
      * Target we publish for clients to send messages to IncomingHandler.
      */
@@ -49,9 +71,17 @@ public class PlaybackService extends Service implements
     private MediaPlayer mMediaPlayer;
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
+    private Bitmap mCurrentTrackBitmap = null;
+
+    private final Handler mThreadHandler = new Handler();
+    private boolean mShowNotification = false;
 
     public PlaybackService() {
+        super("net.malwasandres.spotifystreamer.PlaybackService");
+    }
 
+    public PlaybackService(String name) {
+        super("name");
     }
 
     @Override
@@ -64,13 +94,33 @@ public class PlaybackService extends Service implements
         mMediaPlayer.setOnErrorListener(this);
     }
 
-    public void playTrack(TrackModel track) {
-        mCurrentTrack = track;
-        startPlay(mCurrentTrack);
+    public void playTrack(int listPosition) {
+        playTrack(mTracks.get(listPosition));
     }
 
-    public void playTrack(int listPosition) {
-        mCurrentTrack = mTracks.get(listPosition);
+    public void playTrack(TrackModel track) {
+        mCurrentTrack = track;
+
+        Picasso.with(this)
+                .load(mCurrentTrack.imageUrl)
+                .into(new Target() {
+                    @Override
+                    public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+                        mCurrentTrackBitmap = bitmap;
+                        buildNotification();
+                    }
+
+                    @Override
+                    public void onBitmapFailed(Drawable errorDrawable) {
+
+                    }
+
+                    @Override
+                    public void onPrepareLoad(Drawable placeHolderDrawable) {
+
+                    }
+                });
+
         startPlay(mCurrentTrack);
     }
 
@@ -104,17 +154,24 @@ public class PlaybackService extends Service implements
         } catch (RemoteException e) {
             e.printStackTrace();
         }
+
+        buildNotification();
     }
 
     @Override
     public void onDestroy() {
+        cleanup();
+        super.onDestroy();
+    }
+
+    private void cleanup() {
         if (mMediaPlayer != null) {
             mMediaPlayer.stop();
             mMediaPlayer.release();
             mMediaPlayer = null;
         }
 
-        super.onDestroy();
+        clearNotification();
     }
 
     private void startScheduler() {
@@ -148,6 +205,73 @@ public class PlaybackService extends Service implements
     @Override
     public IBinder onBind(Intent intent) {
         return mMessenger.getBinder();
+    }
+
+    @Override
+    protected void onHandleIntent(Intent intent) {
+        String action = intent.getAction();
+        if (action == null) return;
+
+        switch (action) {
+            case ACTION_PAUSE:
+            case ACTION_PLAY:
+                mThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        onTogglePlay();
+                    }
+                });
+                break;
+            case ACTION_NEXT:
+                mThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        onNextTrack();
+                    }
+                });
+                break;
+            case ACTION_PREVIOUS:
+                mThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        onPreviousTrack();
+                    }
+                });
+                break;
+            case ACTION_START_PLAYBACK_ACTIVITY:
+                Intent playbackIntent = new Intent(this, PlaybackActivity.class);
+                playbackIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                Bundle playbackBundle = new Bundle();
+                playbackBundle.putInt(getString(R.string.key_spotify_playback_track_single),
+                        mTracks.indexOf(mCurrentTrack));
+                playbackBundle.putParcelableArrayList(getString(R.string.key_track_list), mTracks);
+                playbackIntent.putExtras(playbackBundle);
+
+                Intent topTenIntent = new Intent(this, TopTenTrackActivity.class);
+                topTenIntent.putExtra(
+                        getString(R.string.key_spotify_artist_id), mCurrentTrack.artistId);
+
+                Intent mainIntent = new Intent(this, MainActivity.class);
+                mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                try {
+                    TaskStackBuilder builder = TaskStackBuilder.create(this);
+                    builder.addParentStack(MainActivity.class);
+                    builder.addNextIntent(mainIntent);
+                    builder.addParentStack(TopTenTrackActivity.class);
+                    builder.addNextIntent(topTenIntent);
+                    builder.addParentStack(PlaybackActivity.class);
+                    builder.addNextIntent(playbackIntent);
+                    builder.startActivities();
+                } catch (Exception e) {
+                    Log.e(LOG_TAG, e.toString());
+                }
+                break;
+            case ACTION_STOP:
+                cleanup();
+                stopSelf();
+                break;
+        }
     }
 
     @Override
@@ -194,6 +318,55 @@ public class PlaybackService extends Service implements
                 e.printStackTrace();
             }
         }
+
+        buildNotification();
+    }
+
+    private void buildNotification() {
+        if (!mShowNotification) return;
+
+        Intent intent = new Intent(getApplicationContext(), PlaybackService.class);
+        intent.setAction(ACTION_START_PLAYBACK_ACTIVITY);
+
+        PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, 0);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext())
+                .setLargeIcon(mCurrentTrackBitmap)
+                .setSmallIcon(R.drawable.ic_av_pause)
+                .setContentTitle(mCurrentTrack.name)
+                .setContentText(mCurrentTrack.albumName)
+                .setContentInfo(mCurrentTrack.artistName)
+                .setContentIntent(pendingIntent);
+
+        // react to swipe to dismiss event ( stops service )
+        Intent deleteIntent = new Intent(getApplicationContext(), PlaybackService.class);
+        deleteIntent.setAction(ACTION_STOP);
+        PendingIntent deletePendingIntent = PendingIntent.getService(getApplicationContext(), 1, deleteIntent, 0);
+        builder.setDeleteIntent(deletePendingIntent);
+
+        builder.addAction(newAction(android.R.drawable.ic_media_previous, "", ACTION_PREVIOUS));
+        if (mMediaPlayer.isPlaying()) {
+            builder.addAction(newAction(android.R.drawable.ic_media_pause, "", ACTION_PAUSE));
+        } else {
+            builder.addAction(newAction(android.R.drawable.ic_media_play, "", ACTION_PLAY));
+        }
+        builder.addAction(newAction(android.R.drawable.ic_media_next, "", ACTION_NEXT));
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.notify(NOTIFICATION_ID, builder.build());
+    }
+
+    private NotificationCompat.Action newAction(int icon, String title, String intentAction) {
+        Intent intent = new Intent(getApplicationContext(), PlaybackService.class);
+        intent.setAction(intentAction);
+        PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, 0);
+        return new NotificationCompat.Action.Builder(icon, title, pendingIntent).build();
+    }
+
+    private void clearNotification() {
+        NotificationManager notificationManager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(NOTIFICATION_ID);
     }
 
     class IncomingHandler extends Handler {
@@ -233,6 +406,14 @@ public class PlaybackService extends Service implements
                         if (mCurrentTrack != null) startPlay(mCurrentTrack);
                         mStartPlaybackFrom = pos * 1000;
                     }
+                    break;
+                case MSG_SHOW_NOTIFICATION:
+                    mShowNotification = true;
+                    buildNotification();
+                    break;
+                case MSG_HIDE_NOTIFICATION:
+                    mShowNotification = false;
+                    clearNotification();
                 default:
                     super.handleMessage(msg);
             }
