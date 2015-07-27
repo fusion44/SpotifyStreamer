@@ -211,36 +211,6 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     }
 
     @Override
-    public void onStart() {
-        if (mServiceMessenger != null) {
-            try {
-                Message msg = Message.obtain(null,
-                        PlaybackService.MSG_HIDE_NOTIFICATION);
-                msg.replyTo = mMessenger;
-                mServiceMessenger.send(msg);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
-        }
-        super.onStart();
-    }
-
-    @Override
-    public void onPause() {
-        if (mServiceMessenger != null) {
-            try {
-                Message msg = Message.obtain(null,
-                        PlaybackService.MSG_SHOW_NOTIFICATION);
-                msg.replyTo = mMessenger;
-                mServiceMessenger.send(msg);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
-        }
-        super.onPause();
-    }
-
-    @Override
     public void onDestroy() {
         super.onDestroy();
         doUnbindService();
@@ -251,11 +221,7 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         // class name because there is no reason to be able to let other
         // applications replace our component.
         Intent i = new Intent(mContext, PlaybackService.class);
-        i.putExtra(getString(R.string.key_track_list), mTracks);
-        i.putExtra(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
-        mContext.startService(i);
-        mContext.bindService(new Intent(mContext, PlaybackService.class),
-                mConnection, Context.BIND_AUTO_CREATE);
+        mContext.bindService(i, mConnection, Context.BIND_AUTO_CREATE);
         mIsBound = true;
     }
 
@@ -276,12 +242,13 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
             }
 
             mContext.unbindService(mConnection);
-            mContext.stopService(new Intent(mContext, PlaybackService.class));
             mIsBound = false;
         }
     }
 
     private void setupUi() {
+        if (!mIsBound) return;
+
         mArtistNameTextView.setText(mCurrentTrack.artistName);
         mAlbumNameTextView.setText(mCurrentTrack.albumName);
         mTrackNameTextView.setText(mCurrentTrack.name);
@@ -385,6 +352,7 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
                     int seconds = (msg.getData().getInt(getString(R.string.key_playback_position)) + 500) / 1000;
                     mPositionSeekbar.setProgress(seconds);
                     mCurrentPositionTextView.setText(getTimeString(seconds));
+                    break;
                 default:
                     super.handleMessage(msg);
             }

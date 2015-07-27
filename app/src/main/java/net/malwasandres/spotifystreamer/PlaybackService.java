@@ -1,6 +1,7 @@
 package net.malwasandres.spotifystreamer;
 
 import android.app.IntentService;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -43,8 +44,6 @@ public class PlaybackService extends IntentService implements
     static final int MSG_TOGGLE_PLAY = 5;
     static final int MSG_SET_TRACKS = 6;
     static final int MSG_SET_PLAYBACK_POS = 7;
-    static final int MSG_SHOW_NOTIFICATION = 8;
-    static final int MSG_HIDE_NOTIFICATION = 9;
 
     public static final String ACTION_PLAY = "net.malwasandres.spotifystreamer.action_play";
     public static final String ACTION_PAUSE = "net.malwasandres.spotifystreamer.action_pause";
@@ -74,7 +73,6 @@ public class PlaybackService extends IntentService implements
     private Bitmap mCurrentTrackBitmap = null;
 
     private final Handler mThreadHandler = new Handler();
-    private boolean mShowNotification = false;
 
     public PlaybackService() {
         super("net.malwasandres.spotifystreamer.PlaybackService");
@@ -323,14 +321,14 @@ public class PlaybackService extends IntentService implements
     }
 
     private void buildNotification() {
-        if (!mShowNotification) return;
+        Intent upIntent = new Intent(this, PlaybackActivity.class);
 
-        Intent intent = new Intent(getApplicationContext(), PlaybackService.class);
-        intent.setAction(ACTION_START_PLAYBACK_ACTIVITY);
+        PendingIntent pendingIntent =
+                TaskStackBuilder.create(this)
+                        .addNextIntentWithParentStack(upIntent)
+                        .getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, 0);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext())
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
                 .setLargeIcon(mCurrentTrackBitmap)
                 .setSmallIcon(R.drawable.ic_av_pause)
                 .setContentTitle(mCurrentTrack.name)
@@ -352,8 +350,8 @@ public class PlaybackService extends IntentService implements
         }
         builder.addAction(newAction(android.R.drawable.ic_media_next, "", ACTION_NEXT));
 
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(NOTIFICATION_ID, builder.build());
+        Notification notification = builder.build();
+        startForeground(NOTIFICATION_ID, notification);
     }
 
     private NotificationCompat.Action newAction(int icon, String title, String intentAction) {
@@ -407,13 +405,6 @@ public class PlaybackService extends IntentService implements
                         mStartPlaybackFrom = pos * 1000;
                     }
                     break;
-                case MSG_SHOW_NOTIFICATION:
-                    mShowNotification = true;
-                    buildNotification();
-                    break;
-                case MSG_HIDE_NOTIFICATION:
-                    mShowNotification = false;
-                    clearNotification();
                 default:
                     super.handleMessage(msg);
             }
