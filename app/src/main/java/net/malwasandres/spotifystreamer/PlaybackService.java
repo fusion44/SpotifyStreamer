@@ -1,9 +1,9 @@
 package net.malwasandres.spotifystreamer;
 
-import android.app.IntentService;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -11,11 +11,7 @@ import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.RemoteException;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
@@ -32,18 +28,11 @@ import java.util.concurrent.TimeUnit;
 
 
 // http://code.tutsplus.com/tutorials/create-a-music-player-on-android-song-playback--mobile-22778
-public class PlaybackService extends IntentService implements
+public class PlaybackService extends Service implements
         MediaPlayer.OnPreparedListener,
         MediaPlayer.OnInfoListener,
         MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener {
-    static final int MSG_REGISTER_CLIENT = 1;
-    static final int MSG_UNREGISTER_CLIENT = 2;
-    static final int MSG_NEXT_TRACK = 3;
-    static final int MSG_PREVIOUS_TRACK = 4;
-    static final int MSG_TOGGLE_PLAY = 5;
-    static final int MSG_SET_TRACKS = 6;
-    static final int MSG_SET_PLAYBACK_POS = 7;
 
     public static final String ACTION_PLAY = "net.malwasandres.spotifystreamer.action_play";
     public static final String ACTION_PAUSE = "net.malwasandres.spotifystreamer.action_pause";
@@ -51,17 +40,28 @@ public class PlaybackService extends IntentService implements
     public static final String ACTION_PREVIOUS = "net.malwasandres.spotifystreamer.action_previous";
     public static final String ACTION_STOP = "net.malwasandres.spotifystreamer.action_stop";
     public static final String ACTION_START_PLAYBACK_ACTIVITY = "net.malwasandres.spotifystreamer.action_start_activity";
+    public static final String ACTION_SET_TRACK_LIST = "net.malwasandres.spotifystreamer.action_set_track_list";
+    public static final String ACTION_SET_PLAYBACK_POS_IN = "net.malwasandres.spotifystreamer.action_playback_position_out";
 
-    private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
+    // actions going out to PlaybackActivity
+    public static final String ACTION_PLAYBACK_POSITION_OUT = "net.malwasandres.spotifystreamer.action_playback_position_out";
+    public static final String ACTION_SET_CURRENT_TRACK = "net.malwasandres.spotifystreamer.action_current_track";
+    public static final String ACTION_PLAYBACK_STOPPED = "net.malwasandres.spotifystreamer.action_playback_stopped";
+    public static final String ACTION_PLAYBACK_STARTED = "net.malwasandres.spotifystreamer.action_playback_started";
+
+    private static final String LOG_TAG = PlaybackService.class.getSimpleName();
     private static final int NOTIFICATION_ID = 1234;
-    /**
-     * Target we publish for clients to send messages to IncomingHandler.
-     */
-    final Messenger mMessenger = new Messenger(new IncomingHandler());
+
+
     private final ScheduledExecutorService mScheduler =
             Executors.newScheduledThreadPool(1);
-    ArrayList<Messenger> mClients = new ArrayList<Messenger>();
     private int mStartPlaybackFrom = -1;
+
+    private static boolean IS_RUNNING;
+
+    public static boolean isRunning() {
+        return IS_RUNNING;
+    }
 
     /*
      * Playback position updater
@@ -72,16 +72,6 @@ public class PlaybackService extends IntentService implements
     private TrackModel mCurrentTrack;
     private Bitmap mCurrentTrackBitmap = null;
 
-    private final Handler mThreadHandler = new Handler();
-
-    public PlaybackService() {
-        super("net.malwasandres.spotifystreamer.PlaybackService");
-    }
-
-    public PlaybackService(String name) {
-        super("name");
-    }
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -90,6 +80,85 @@ public class PlaybackService extends IntentService implements
         mMediaPlayer.setOnPreparedListener(this);
         mMediaPlayer.setOnCompletionListener(this);
         mMediaPlayer.setOnErrorListener(this);
+        IS_RUNNING = true;
+    }
+
+    @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null || intent.getAction() == null) {
+            return super.onStartCommand(intent, flags, startId);
+        }
+
+        String action = intent.getAction();
+        Bundle data = intent.getExtras();
+
+        Log.i(LOG_TAG, "onStartCommand: " + action);
+
+
+        if (action.equals(ACTION_SET_TRACK_LIST) && data != null) {
+            if (mTracks != null) mTracks.clear();
+            data.setClassLoader(TrackModel.class.getClassLoader());
+            mTracks = data.getParcelableArrayList(getString(R.string.key_track_list));
+
+            TrackModel t;
+            int trackId = data.getInt(getString(R.string.key_spotify_playback_track_single), -1);
+            if (trackId == -1) t = mTracks.get(0);
+            else t = mTracks.get(trackId);
+
+            playTrack(t);
+            mStartPlaybackFrom = -1;
+        } else {
+            switch (action) {
+                case ACTION_PAUSE:
+                case ACTION_PLAY:
+                    onTogglePlay();
+                    break;
+                case ACTION_NEXT:
+                    onNextTrack();
+                    break;
+                case ACTION_PREVIOUS:
+                    onPreviousTrack();
+                    break;
+                case ACTION_START_PLAYBACK_ACTIVITY:
+                    Intent playbackIntent = new Intent(getApplicationContext(), PlaybackActivity.class);
+                    playbackIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    Bundle playbackBundle = new Bundle();
+                    playbackBundle.putInt(getString(R.string.key_spotify_playback_track_single),
+                            mTracks.indexOf(mCurrentTrack));
+                    playbackBundle.putParcelableArrayList(getString(R.string.key_track_list), mTracks);
+                    playbackIntent.putExtras(playbackBundle);
+
+                    Intent topTenIntent = new Intent(getApplicationContext(), TopTenTrackActivity.class);
+                    topTenIntent.putExtra(
+                            getString(R.string.key_spotify_artist_id), mCurrentTrack.artistId);
+
+                    Intent mainIntent = new Intent(getApplicationContext(), MainActivity.class);
+                    mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                    try {
+                        TaskStackBuilder builder = TaskStackBuilder.create(getApplicationContext());
+                        builder.addParentStack(MainActivity.class);
+                        builder.addNextIntent(mainIntent);
+                        builder.addParentStack(TopTenTrackActivity.class);
+                        builder.addNextIntent(topTenIntent);
+                        builder.addParentStack(PlaybackActivity.class);
+                        builder.addNextIntent(playbackIntent);
+                        builder.startActivities();
+                    } catch (Exception e) {
+                        Log.e(LOG_TAG, e.toString());
+                    }
+                    break;
+                case ACTION_STOP:
+                    stopSelf();
+                    break;
+                case ACTION_SET_PLAYBACK_POS_IN:
+                    int pos = intent.getIntExtra(getString(R.string.key_playback_position), 0);
+                    Log.i(LOG_TAG, pos + " ");
+                    mMediaPlayer.seekTo(pos * 1000);
+                default:
+                    break;
+            }
+        }
+        return super.onStartCommand(intent, flags, startId);
     }
 
     public void playTrack(int listPosition) {
@@ -143,50 +212,41 @@ public class PlaybackService extends IntentService implements
         mMediaPlayer.start();
         mCurrentTrack.length = mMediaPlayer.getDuration();
 
-        Message m = Message.obtain(null, PlaybackActivityFragment.MSG_CURRENT_TRACK);
-        Bundle b = new Bundle();
-        b.putParcelable(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
-        m.setData(b);
-        try {
-            mClients.get(0).send(m);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
+        Intent i = new Intent(ACTION_SET_CURRENT_TRACK);
+        i.putExtra(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
+        sendBroadcast(i);
 
         buildNotification();
     }
 
     @Override
     public void onDestroy() {
-        cleanup();
-        super.onDestroy();
-    }
-
-    private void cleanup() {
         if (mMediaPlayer != null) {
             mMediaPlayer.stop();
+            mMediaPlayer.reset();
             mMediaPlayer.release();
             mMediaPlayer = null;
         }
-
+        stopScheduler();
         clearNotification();
+        IS_RUNNING = false;
+
+        super.onDestroy();
     }
 
     private void startScheduler() {
         stopScheduler();
         mScheduledFuture = mScheduler.scheduleAtFixedRate(new Runnable() {
             public void run() {
-                Message msg = Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_POSITION);
-                Bundle b = new Bundle();
-                b.putInt(getString(R.string.key_playback_position), mMediaPlayer.getCurrentPosition());
-                msg.setData(b);
-                try {
-                    mClients.get(0).send(msg);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
+                Intent i = new Intent(ACTION_PLAYBACK_POSITION_OUT);
+                i.putExtra(getString(R.string.key_playback_position), mMediaPlayer.getCurrentPosition());
+                sendBroadcast(i);
             }
         }, 0, 1, TimeUnit.SECONDS);
+    }
+
+    @Override public IBinder onBind(Intent intent) {
+        return null;
     }
 
     private void stopScheduler() {
@@ -201,85 +261,14 @@ public class PlaybackService extends IntentService implements
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return mMessenger.getBinder();
-    }
-
-    @Override
-    protected void onHandleIntent(Intent intent) {
-        String action = intent.getAction();
-        if (action == null) return;
-
-        switch (action) {
-            case ACTION_PAUSE:
-            case ACTION_PLAY:
-                mThreadHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        onTogglePlay();
-                    }
-                });
-                break;
-            case ACTION_NEXT:
-                mThreadHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        onNextTrack();
-                    }
-                });
-                break;
-            case ACTION_PREVIOUS:
-                mThreadHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        onPreviousTrack();
-                    }
-                });
-                break;
-            case ACTION_START_PLAYBACK_ACTIVITY:
-                Intent playbackIntent = new Intent(this, PlaybackActivity.class);
-                playbackIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                Bundle playbackBundle = new Bundle();
-                playbackBundle.putInt(getString(R.string.key_spotify_playback_track_single),
-                        mTracks.indexOf(mCurrentTrack));
-                playbackBundle.putParcelableArrayList(getString(R.string.key_track_list), mTracks);
-                playbackIntent.putExtras(playbackBundle);
-
-                Intent topTenIntent = new Intent(this, TopTenTrackActivity.class);
-                topTenIntent.putExtra(
-                        getString(R.string.key_spotify_artist_id), mCurrentTrack.artistId);
-
-                Intent mainIntent = new Intent(this, MainActivity.class);
-                mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-                try {
-                    TaskStackBuilder builder = TaskStackBuilder.create(this);
-                    builder.addParentStack(MainActivity.class);
-                    builder.addNextIntent(mainIntent);
-                    builder.addParentStack(TopTenTrackActivity.class);
-                    builder.addNextIntent(topTenIntent);
-                    builder.addParentStack(PlaybackActivity.class);
-                    builder.addNextIntent(playbackIntent);
-                    builder.startActivities();
-                } catch (Exception e) {
-                    Log.e(LOG_TAG, e.toString());
-                }
-                break;
-            case ACTION_STOP:
-                cleanup();
-                stopSelf();
-                break;
-        }
-    }
-
-    @Override
     public boolean onError(MediaPlayer mediaPlayer, int i, int i1) {
+        Log.e(LOG_TAG, "An error occurred while loading media");
         return false;
     }
 
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
-        stopScheduler();
+        stopSelf();
     }
 
     public void onPreviousTrack() {
@@ -300,21 +289,11 @@ public class PlaybackService extends IntentService implements
         if (mMediaPlayer.isPlaying()) {
             mMediaPlayer.pause();
             stopScheduler();
-
-            try {
-                mClients.get(0).send(Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_STOP));
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
+            sendBroadcast(new Intent(ACTION_PLAYBACK_STOPPED));
         } else {
             mMediaPlayer.start();
             startScheduler();
-
-            try {
-                mClients.get(0).send(Message.obtain(null, PlaybackActivityFragment.MSG_PLAYBACK_START));
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
+            sendBroadcast(new Intent(ACTION_PLAYBACK_STARTED));
         }
 
         buildNotification();
@@ -365,49 +344,5 @@ public class PlaybackService extends IntentService implements
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancel(NOTIFICATION_ID);
-    }
-
-    class IncomingHandler extends Handler {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MSG_REGISTER_CLIENT:
-                    mClients.add(msg.replyTo);
-                    break;
-                case MSG_UNREGISTER_CLIENT:
-                    mClients.remove(msg.replyTo);
-                    break;
-                case MSG_NEXT_TRACK:
-                    onNextTrack();
-                    break;
-                case MSG_PREVIOUS_TRACK:
-                    onPreviousTrack();
-                    break;
-                case MSG_TOGGLE_PLAY:
-                    onTogglePlay();
-                    break;
-                case MSG_SET_TRACKS:
-                    Bundle data = msg.getData();
-                    if (mTracks != null) mTracks.clear();
-                    msg.getData().setClassLoader(TrackModel.class.getClassLoader());
-                    mTracks = data.getParcelableArrayList(getString(R.string.key_track_list));
-                    TrackModel t = data.getParcelable(
-                            getString(R.string.key_spotify_playback_track_single));
-                    playTrack(t);
-                    mStartPlaybackFrom = -1;
-                    break;
-                case MSG_SET_PLAYBACK_POS:
-                    int pos = msg.getData().getInt(getString(R.string.key_playback_position));
-                    if (mMediaPlayer.isPlaying()) {
-                        mMediaPlayer.seekTo(pos * 1000);
-                    } else {
-                        if (mCurrentTrack != null) startPlay(mCurrentTrack);
-                        mStartPlaybackFrom = pos * 1000;
-                    }
-                    break;
-                default:
-                    super.handleMessage(msg);
-            }
-        }
     }
 }

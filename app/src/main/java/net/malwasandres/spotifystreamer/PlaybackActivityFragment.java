@@ -1,15 +1,10 @@
 package net.malwasandres.spotifystreamer;
 
-import android.content.ComponentName;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
+import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.RemoteException;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.widget.ShareActionProvider;
@@ -38,16 +33,9 @@ import butterknife.Optional;
  * A placeholder fragment containing a simple view.
  */
 public class PlaybackActivityFragment extends DialogFragment implements SeekBar.OnSeekBarChangeListener {
-    static final int MSG_CURRENT_TRACK = 1;
-    static final int MSG_PLAYBACK_START = 2;
-    static final int MSG_PLAYBACK_STOP = 3;
-    static final int MSG_PLAYBACK_POSITION = 4;
-    static final int MSG_TRACK_LENGTH = 5;
     private static final String LOG_TAG = PlaybackActivityFragment.class.getSimpleName();
-    /**
-     * Target we publish for clients to send messages to IncomingHandler.
-     */
-    final Messenger mMessenger = new Messenger(new IncomingHandler());
+
+
     @InjectView(R.id.playButton)
     ImageButton mPlayButton;
     @InjectView(R.id.currentPositionTextView)
@@ -68,98 +56,58 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     @Optional // only available in two pane view
             ImageButton mShareTrackButton;
 
-    /**
-     * Messenger for communicating with service.
-     */
-    Messenger mServiceMessenger = null;
-    /**
-     * Flag indicating whether we have called bind on the service.
-     */
-    boolean mIsBound;
+
     private boolean mUseTwoPaneLayout = false;
     private ArrayList<TrackModel> mTracks;
     private TrackModel mCurrentTrack;
     private ShareActionProvider mShareActionProvider;
-    /**
-     * Class for interacting with the main interface of the service.
-     */
-    private ServiceConnection mConnection = new ServiceConnection() {
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            // This is called when the connection with the service has been
-            // established, giving us the service object we can use to
-            // interact with the service.  We are communicating with our
-            // service through an IDL interface, so get a client-side
-            // representation of that from the raw service object.
-            mServiceMessenger = new Messenger(service);
 
-            // We want to monitor the service for as long as we are
-            // connected to it.
-            try {
-                Message msg = Message.obtain(null, PlaybackService.MSG_REGISTER_CLIENT);
-                msg.replyTo = mMessenger;
-                mServiceMessenger.send(msg);
+    BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
 
-                Bundle b = new Bundle();
-                b.putParcelable(
-                        getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
-                b.putParcelableArrayList(getString(R.string.key_track_list), mTracks);
-                msg = Message.obtain(null, PlaybackService.MSG_SET_TRACKS);
-                msg.setData(b);
-                mServiceMessenger.send(msg);
-            } catch (RemoteException e) {
-                // In this case the service has crashed before we could even
-                // do anything with it; we can count on soon being
-                // disconnected (and then reconnected if it can be restarted)
-                // so there is no need to do anything here.
+            switch (action) {
+                case PlaybackService.ACTION_SET_CURRENT_TRACK:
+                    intent.getExtras().setClassLoader(TrackModel.class.getClassLoader());
+                    mCurrentTrack = intent.getExtras().getParcelable(
+                            getString(R.string.key_spotify_playback_track_single));
+                    if (!mUseTwoPaneLayout) doShareTrack(createShareIntent());
+                    setupUi();
+                    break;
+                case PlaybackService.ACTION_PLAYBACK_POSITION_OUT:
+                    int seconds = (intent.getExtras().getInt(
+                            getString(R.string.key_playback_position)) + 500) / 1000;
+                    mPositionSeekbar.setProgress(seconds);
+                    mCurrentPositionTextView.setText(getTimeString(seconds));
+                    break;
+                case PlaybackService.ACTION_PLAYBACK_STOPPED:
+                    mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
+                    break;
+                case PlaybackService.ACTION_PLAYBACK_STARTED:
+                    mPlayButton.setImageResource(R.drawable.ic_av_pause);
+                    break;
+                default:
+                    break;
             }
         }
-
-        public void onServiceDisconnected(ComponentName className) {
-            // This is called when the connection with the service has been
-            // unexpectedly disconnected -- that is, its process crashed.
-            mServiceMessenger = null;
-        }
     };
-    private Context mContext;
 
     public PlaybackActivityFragment() {
     }
 
     @OnClick(R.id.skipPreviousButton)
     public void onSkipPreviousClick() {
-        Message msg = Message.obtain(null, PlaybackService.MSG_PREVIOUS_TRACK);
-        msg.replyTo = mMessenger;
-        try {
-            mServiceMessenger.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
+        sendActionToService(PlaybackService.ACTION_PREVIOUS);
     }
 
     @OnClick(R.id.skipNextButton)
     public void onSkipNextClick() {
-        Message msg = Message.obtain(null, PlaybackService.MSG_NEXT_TRACK);
-        msg.replyTo = mMessenger;
-        try {
-            mServiceMessenger.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
+        sendActionToService(PlaybackService.ACTION_NEXT);
     }
 
     @OnClick(R.id.playButton)
     public void onPlayButton() {
-        Message msg = Message.obtain(null, PlaybackService.MSG_TOGGLE_PLAY);
-        msg.replyTo = mMessenger;
-        try {
-            mServiceMessenger.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-
-        /*if (true) mPlayButton.setImageResource(R.drawable.ic_av_pause);
-        else */
+        sendActionToService(PlaybackService.ACTION_PLAY);
     }
 
     @OnClick(R.id.shareTrackButton)
@@ -184,7 +132,6 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mContext = getActivity().getApplicationContext();
         int trackId;
         Bundle b;
 
@@ -197,11 +144,14 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         else mCurrentTrack = mTracks.get(trackId);
         setRetainInstance(true);
 
+        Intent i = new Intent(getActivity().getApplicationContext(), PlaybackService.class);
+        i.setAction(PlaybackService.ACTION_SET_TRACK_LIST);
+        i.putExtras(b);
+        getActivity().getApplicationContext().startService(i);
+
         // use the share action provider in action bar only in phone mode
         // in tablet mode its embedded in the playback layout
         if (!mUseTwoPaneLayout) setHasOptionsMenu(true);
-
-        doBindService();
     }
 
     public static PlaybackActivityFragment newInstance(Bundle args) {
@@ -210,45 +160,23 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         return frag;
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        doUnbindService();
-    }
-
-    void doBindService() {
-        // Establish a connection with the service.  We use an explicit
-        // class name because there is no reason to be able to let other
-        // applications replace our component.
-        Intent i = new Intent(mContext, PlaybackService.class);
-        mContext.bindService(i, mConnection, Context.BIND_AUTO_CREATE);
-        mIsBound = true;
-    }
-
-    void doUnbindService() {
-        if (mIsBound) {
-            // If we have received the service, and hence registered with
-            // it, then now is the time to unregister.
-            if (mServiceMessenger != null) {
-                try {
-                    Message msg = Message.obtain(null,
-                            PlaybackService.MSG_UNREGISTER_CLIENT);
-                    msg.replyTo = mMessenger;
-                    mServiceMessenger.send(msg);
-                } catch (RemoteException e) {
-                    // There is nothing special we need to do if the service
-                    // has crashed.
-                }
-            }
-
-            mContext.unbindService(mConnection);
-            mIsBound = false;
+    private void sendActionToService(String action) {
+        if (!PlaybackService.isRunning()) {
+            Bundle b = new Bundle();
+            b.putParcelableArrayList(getActivity().getString(R.string.key_track_list), mTracks);
+            b.putInt(getString(R.string.key_spotify_playback_track_single), mTracks.indexOf(mCurrentTrack));
+            Intent i = new Intent(getActivity().getApplicationContext(), PlaybackService.class);
+            i.setAction(PlaybackService.ACTION_SET_TRACK_LIST);
+            i.putExtras(b);
+            getActivity().getApplicationContext().startService(i);
         }
+
+        Intent i = new Intent(getActivity().getApplicationContext(), PlaybackService.class);
+        i.setAction(action);
+        getActivity().startService(i);
     }
 
     private void setupUi() {
-        if (!mIsBound) return;
-
         mArtistNameTextView.setText(mCurrentTrack.artistName);
         mAlbumNameTextView.setText(mCurrentTrack.albumName);
         mTrackNameTextView.setText(mCurrentTrack.name);
@@ -272,18 +200,29 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         else return minutes + ":" + seconds;
     }
 
+    @Override public void onStart() {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(PlaybackService.ACTION_SET_CURRENT_TRACK);
+        filter.addAction(PlaybackService.ACTION_PLAYBACK_POSITION_OUT);
+        filter.addAction(PlaybackService.ACTION_PLAYBACK_STOPPED);
+        filter.addAction(PlaybackService.ACTION_PLAYBACK_STARTED);
+        getActivity().registerReceiver(receiver, filter);
+
+        super.onStart();
+    }
+
+    @Override public void onPause() {
+        getActivity().unregisterReceiver(receiver);
+        super.onPause();
+    }
+
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
-            final Message msg = Message.obtain(null, PlaybackService.MSG_SET_PLAYBACK_POS);
-            Bundle b = new Bundle();
-            b.putInt(getString(R.string.key_playback_position), progress);
-            msg.setData(b);
-            try {
-                mServiceMessenger.send(msg);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
+            Intent i = new Intent(getActivity().getApplicationContext(), PlaybackService.class);
+            i.setAction(PlaybackService.ACTION_SET_PLAYBACK_POS_IN);
+            i.putExtra(getString(R.string.key_playback_position), progress);
+            getActivity().startService(i);
         }
     }
 
@@ -326,36 +265,5 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
 
     public void doShareTrack(Intent shareIntent) {
         if (mShareActionProvider != null) mShareActionProvider.setShareIntent(shareIntent);
-    }
-
-    /**
-     * Handler of incoming messages from service.
-     */
-    class IncomingHandler extends Handler {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MSG_CURRENT_TRACK:
-                    msg.getData().setClassLoader(TrackModel.class.getClassLoader());
-                    mCurrentTrack = msg.getData().getParcelable(
-                            getString(R.string.key_spotify_playback_track_single));
-                    if (!mUseTwoPaneLayout) doShareTrack(createShareIntent());
-                    setupUi();
-                    break;
-                case MSG_PLAYBACK_START:
-                    mPlayButton.setImageResource(R.drawable.ic_av_pause);
-                    break;
-                case MSG_PLAYBACK_STOP:
-                    mPlayButton.setImageResource(R.drawable.ic_av_play_arrow);
-                    break;
-                case MSG_PLAYBACK_POSITION:
-                    int seconds = (msg.getData().getInt(getString(R.string.key_playback_position)) + 500) / 1000;
-                    mPositionSeekbar.setProgress(seconds);
-                    mCurrentPositionTextView.setText(getTimeString(seconds));
-                    break;
-                default:
-                    super.handleMessage(msg);
-            }
-        }
     }
 }
