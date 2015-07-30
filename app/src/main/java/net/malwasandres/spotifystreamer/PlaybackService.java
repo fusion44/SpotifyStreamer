@@ -41,7 +41,8 @@ public class PlaybackService extends Service implements
     public static final String ACTION_STOP = "net.malwasandres.spotifystreamer.action_stop";
     public static final String ACTION_START_PLAYBACK_ACTIVITY = "net.malwasandres.spotifystreamer.action_start_activity";
     public static final String ACTION_SET_TRACK_LIST = "net.malwasandres.spotifystreamer.action_set_track_list";
-    public static final String ACTION_SET_PLAYBACK_POS_IN = "net.malwasandres.spotifystreamer.action_playback_position_out";
+    public static final String ACTION_SET_PLAYBACK_POSITION_IN = "net.malwasandres.spotifystreamer.action_playback_position_in";
+    public static final String ACTION_GET_CURRENT_TRACK = "net.malwasandres.spotifystreamer.action_get_current_track";
 
     // actions going out to PlaybackActivity
     public static final String ACTION_PLAYBACK_POSITION_OUT = "net.malwasandres.spotifystreamer.action_playback_position_out";
@@ -49,9 +50,11 @@ public class PlaybackService extends Service implements
     public static final String ACTION_PLAYBACK_STOPPED = "net.malwasandres.spotifystreamer.action_playback_stopped";
     public static final String ACTION_PLAYBACK_STARTED = "net.malwasandres.spotifystreamer.action_playback_started";
 
+    public static final String ACTION_SERVICE_CREATED = "net.malwasandres.spotifystreamer.action_service_created";
+    public static final String ACTION_SERVICE_DESTROYED = "net.malwasandres.spotifystreamer.action_service_destroyed";
+
     private static final String LOG_TAG = PlaybackService.class.getSimpleName();
     private static final int NOTIFICATION_ID = 1234;
-
 
     private final ScheduledExecutorService mScheduler =
             Executors.newScheduledThreadPool(1);
@@ -80,6 +83,9 @@ public class PlaybackService extends Service implements
         mMediaPlayer.setOnPreparedListener(this);
         mMediaPlayer.setOnCompletionListener(this);
         mMediaPlayer.setOnErrorListener(this);
+
+        sendBroadcast(new Intent(ACTION_SERVICE_CREATED));
+
         IS_RUNNING = true;
     }
 
@@ -90,9 +96,6 @@ public class PlaybackService extends Service implements
 
         String action = intent.getAction();
         Bundle data = intent.getExtras();
-
-        Log.i(LOG_TAG, "onStartCommand: " + action);
-
 
         if (action.equals(ACTION_SET_TRACK_LIST) && data != null) {
             if (mTracks != null) mTracks.clear();
@@ -150,10 +153,15 @@ public class PlaybackService extends Service implements
                 case ACTION_STOP:
                     stopSelf();
                     break;
-                case ACTION_SET_PLAYBACK_POS_IN:
+                case ACTION_SET_PLAYBACK_POSITION_IN:
                     int pos = intent.getIntExtra(getString(R.string.key_playback_position), 0);
-                    Log.i(LOG_TAG, pos + " ");
                     mMediaPlayer.seekTo(pos * 1000);
+                    break;
+                case ACTION_GET_CURRENT_TRACK:
+                    Intent i = new Intent(ACTION_SET_CURRENT_TRACK);
+                    i.putExtra(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
+                    i.putExtra(getString(R.string.key_track_list), mTracks);
+                    sendBroadcast(i);
                 default:
                     break;
             }
@@ -230,6 +238,7 @@ public class PlaybackService extends Service implements
         stopScheduler();
         clearNotification();
         IS_RUNNING = false;
+        sendBroadcast(new Intent(ACTION_SERVICE_DESTROYED));
 
         super.onDestroy();
     }

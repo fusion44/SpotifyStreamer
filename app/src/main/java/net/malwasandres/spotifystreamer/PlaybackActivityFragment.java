@@ -86,6 +86,10 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
                 case PlaybackService.ACTION_PLAYBACK_STARTED:
                     mPlayButton.setImageResource(R.drawable.ic_av_pause);
                     break;
+                case PlaybackService.ACTION_GET_CURRENT_TRACK:
+                    mTracks = intent.getParcelableArrayListExtra(getActivity().getString(R.string.key_track_list));
+                    mCurrentTrack = intent.getParcelableExtra(getString(R.string.key_spotify_playback_track_single));
+                    setupUi();
                 default:
                     break;
             }
@@ -138,16 +142,21 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         if (mUseTwoPaneLayout) b = getArguments();
         else b = getActivity().getIntent().getExtras();
 
-        mTracks = b.getParcelableArrayList(getActivity().getString(R.string.key_track_list));
-        trackId = b.getInt(getString(R.string.key_spotify_playback_track_single), -1);
-        if (trackId == -1) mCurrentTrack = mTracks.get(0);
-        else mCurrentTrack = mTracks.get(trackId);
-        setRetainInstance(true);
+        if (!PlaybackService.isRunning()) {
+            mTracks = b.getParcelableArrayList(getActivity().getString(R.string.key_track_list));
+            trackId = b.getInt(getString(R.string.key_spotify_playback_track_single), -1);
+            if (trackId == -1) mCurrentTrack = mTracks.get(0);
+            else mCurrentTrack = mTracks.get(trackId);
 
-        Intent i = new Intent(getActivity().getApplicationContext(), PlaybackService.class);
-        i.setAction(PlaybackService.ACTION_SET_TRACK_LIST);
-        i.putExtras(b);
-        getActivity().getApplicationContext().startService(i);
+            Intent i = new Intent(getActivity().getApplicationContext(), PlaybackService.class);
+            i.setAction(PlaybackService.ACTION_SET_TRACK_LIST);
+            i.putExtras(b);
+            getActivity().getApplicationContext().startService(i);
+        } else {
+            sendActionToService(PlaybackService.ACTION_GET_CURRENT_TRACK);
+        }
+
+        setRetainInstance(true);
 
         // use the share action provider in action bar only in phone mode
         // in tablet mode its embedded in the playback layout
@@ -220,7 +229,7 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
             Intent i = new Intent(getActivity().getApplicationContext(), PlaybackService.class);
-            i.setAction(PlaybackService.ACTION_SET_PLAYBACK_POS_IN);
+            i.setAction(PlaybackService.ACTION_SET_PLAYBACK_POSITION_IN);
             i.putExtra(getString(R.string.key_playback_position), progress);
             getActivity().startService(i);
         }
@@ -242,7 +251,6 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         View v = inflater.inflate(R.layout.fragment_playback, container, false);
         ButterKnife.inject(this, v);
         mPositionSeekbar.setOnSeekBarChangeListener(this);
-        setupUi();
         return v;
     }
 
