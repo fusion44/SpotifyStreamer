@@ -32,7 +32,8 @@ public class PlaybackService extends Service implements
         MediaPlayer.OnPreparedListener,
         MediaPlayer.OnInfoListener,
         MediaPlayer.OnErrorListener,
-        MediaPlayer.OnCompletionListener {
+        MediaPlayer.OnCompletionListener,
+        AudioManager.OnAudioFocusChangeListener {
 
     public static final String ACTION_PLAY = "net.malwasandres.spotifystreamer.action_play";
     public static final String ACTION_PAUSE = "net.malwasandres.spotifystreamer.action_pause";
@@ -78,6 +79,17 @@ public class PlaybackService extends Service implements
     @Override
     public void onCreate() {
         super.onCreate();
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int result = audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN);
+        if (result != AudioManager.AUDIOFOCUS_GAIN) {
+            // TODO: notify playback fragment of the failure
+            Log.e(LOG_TAG, "Failed to gain audio focus");
+            stopSelf();
+        } else {
+            Log.d(LOG_TAG, "Audio focus gained");
+        }
+
         mMediaPlayer = new MediaPlayer();
         mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         mMediaPlayer.setOnPreparedListener(this);
@@ -353,5 +365,9 @@ public class PlaybackService extends Service implements
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancel(NOTIFICATION_ID);
+    }
+
+    @Override public void onAudioFocusChange(int i) {
+        // TODO: react to focus events
     }
 }
