@@ -60,8 +60,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override protected void onPause() {
-        unregisterReceiver(receiver);
-        super.onStop();
+        try {
+            unregisterReceiver(receiver);
+        } catch (Exception e) {
+            // no action necessary
+        }
+        super.onPause();
     }
 
     @Override protected void onResume() {
