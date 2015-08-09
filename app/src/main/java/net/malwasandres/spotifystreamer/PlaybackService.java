@@ -9,11 +9,15 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
+import android.media.MediaMetadata;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
+import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
 import com.squareup.picasso.Picasso;
@@ -62,6 +66,7 @@ public class PlaybackService extends Service implements
     private int mStartPlaybackFrom = -1;
 
     private static boolean IS_RUNNING;
+    private MediaSessionCompat mMediaSessionCompat;
 
     public static boolean isRunning() {
         return IS_RUNNING;
@@ -95,6 +100,15 @@ public class PlaybackService extends Service implements
         mMediaPlayer.setOnPreparedListener(this);
         mMediaPlayer.setOnCompletionListener(this);
         mMediaPlayer.setOnErrorListener(this);
+
+        mMediaSessionCompat = new MediaSessionCompat(getApplicationContext(), "MediaSession", null, null);
+        mMediaSessionCompat.setActive(true);
+
+        PlaybackStateCompat playbackStateCompat = new PlaybackStateCompat.Builder()
+                .setState(PlaybackStateCompat.STATE_PAUSED, 0, 1.0f)
+                .build();
+        mMediaSessionCompat.setPlaybackState(playbackStateCompat);
+        mMediaSessionCompat.setFlags(MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
 
         sendBroadcast(new Intent(ACTION_SERVICE_CREATED));
 
@@ -167,7 +181,7 @@ public class PlaybackService extends Service implements
                     break;
                 case ACTION_SET_PLAYBACK_POSITION_IN:
                     int pos = intent.getIntExtra(getString(R.string.key_playback_position), 0);
-                    mMediaPlayer.seekTo(pos * 1000);
+                    seekTo(pos * 1000);
                     break;
                 case ACTION_GET_CURRENT_TRACK:
                     Intent i = new Intent(ACTION_SET_CURRENT_TRACK);
@@ -179,6 +193,10 @@ public class PlaybackService extends Service implements
             }
         }
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void seekTo(int i) {
+        mMediaPlayer.seekTo(i);
     }
 
     public void playTrack(int listPosition) {
@@ -228,7 +246,7 @@ public class PlaybackService extends Service implements
     public void onPrepared(MediaPlayer mediaPlayer) {
         startScheduler();
 
-        if (mStartPlaybackFrom != -1) mMediaPlayer.seekTo(mStartPlaybackFrom);
+        if (mStartPlaybackFrom != -1) seekTo(mStartPlaybackFrom);
         mMediaPlayer.start();
         mCurrentTrack.length = mMediaPlayer.getDuration();
 
@@ -321,6 +339,18 @@ public class PlaybackService extends Service implements
     }
 
     private void buildNotification() {
+
+        if (android.os.Build.VERSION.SDK_INT > 20) {
+            mMediaSessionCompat.setMetadata(new MediaMetadataCompat.Builder()
+                    .putString(MediaMetadata.METADATA_KEY_ARTIST, mCurrentTrack.albumName)
+                    .putString(MediaMetadata.METADATA_KEY_ALBUM, mCurrentTrack.albumName)
+                    .putString(MediaMetadata.METADATA_KEY_TITLE, mCurrentTrack.name)
+                    .putLong(MediaMetadata.METADATA_KEY_DURATION, mCurrentTrack.length)
+                    .putLong(MediaMetadata.METADATA_KEY_TRACK_NUMBER, 1)
+                    .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, mCurrentTrackBitmap)
+                    .build());
+        }
+
         Intent upIntent = new Intent(this, PlaybackActivity.class);
 
         PendingIntent pendingIntent =
