@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.widget.ShareActionProvider;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -221,7 +222,12 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     }
 
     @Override public void onPause() {
-        getActivity().unregisterReceiver(receiver);
+        try {
+            getActivity().unregisterReceiver(receiver);
+        } catch (Exception e) {
+            Log.i(LOG_TAG, e.getMessage());
+        }
+
         super.onPause();
     }
 
