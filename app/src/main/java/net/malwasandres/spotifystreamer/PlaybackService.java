@@ -194,10 +194,8 @@ public class PlaybackService extends Service implements
                     sendBroadcast(i);
                     break;
                 case ACTION_SHOW_NOTIFICATION:
-                    buildNotification();
-                    break;
                 case ACTION_HIDE_NOTIFICATION:
-                    clearNotification();
+                    buildNotification();
                     break;
                 default:
                     break;
@@ -351,18 +349,20 @@ public class PlaybackService extends Service implements
 
     private void buildNotification() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        boolean show = prefs.getBoolean(getString(R.string.key_show_notification), true);
-        if(!show) return;
+        boolean showNotification = prefs.getBoolean(getString(R.string.key_show_notification), true);
 
         if (android.os.Build.VERSION.SDK_INT > 20) {
-            mMediaSessionCompat.setMetadata(new MediaMetadataCompat.Builder()
+            MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder()
                     .putString(MediaMetadata.METADATA_KEY_ARTIST, mCurrentTrack.albumName)
                     .putString(MediaMetadata.METADATA_KEY_ALBUM, mCurrentTrack.albumName)
                     .putString(MediaMetadata.METADATA_KEY_TITLE, mCurrentTrack.name)
                     .putLong(MediaMetadata.METADATA_KEY_DURATION, mCurrentTrack.length)
-                    .putLong(MediaMetadata.METADATA_KEY_TRACK_NUMBER, 1)
-                    .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, mCurrentTrackBitmap)
-                    .build());
+                    .putLong(MediaMetadata.METADATA_KEY_TRACK_NUMBER, 1);
+            if (showNotification) {
+                builder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, mCurrentTrackBitmap);
+            }
+
+            mMediaSessionCompat.setMetadata(builder.build());
         }
 
         Intent upIntent = new Intent(this, PlaybackActivity.class);
@@ -393,6 +393,15 @@ public class PlaybackService extends Service implements
             builder.addAction(newAction(android.R.drawable.ic_media_play, "", ACTION_PLAY));
         }
         builder.addAction(newAction(android.R.drawable.ic_media_next, "", ACTION_NEXT));
+
+        if (!showNotification) {
+            if (android.os.Build.VERSION.SDK_INT > 20) {
+                builder.setPriority(NotificationCompat.PRIORITY_MIN);
+                builder.setVisibility(NotificationCompat.VISIBILITY_SECRET);
+            } else {
+                builder.setPriority(NotificationCompat.PRIORITY_MIN);
+            }
+        }
 
         Notification notification = builder.build();
         startForeground(NOTIFICATION_ID, notification);
