@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
@@ -13,6 +14,7 @@ import android.media.MediaMetadata;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.media.MediaMetadataCompat;
@@ -48,6 +50,8 @@ public class PlaybackService extends Service implements
     public static final String ACTION_SET_TRACK_LIST = "net.malwasandres.spotifystreamer.action_set_track_list";
     public static final String ACTION_SET_PLAYBACK_POSITION_IN = "net.malwasandres.spotifystreamer.action_playback_position_in";
     public static final String ACTION_GET_CURRENT_TRACK = "net.malwasandres.spotifystreamer.action_get_current_track";
+    public static final String ACTION_SHOW_NOTIFICATION = "net.malwasandres.spotifystreamer.action_show_notification";
+    public static final String ACTION_HIDE_NOTIFICATION = "net.malwasandres.spotifystreamer.action_hide_notification";
 
     // actions going out to PlaybackActivity
     public static final String ACTION_PLAYBACK_POSITION_OUT = "net.malwasandres.spotifystreamer.action_playback_position_out";
@@ -188,6 +192,13 @@ public class PlaybackService extends Service implements
                     i.putExtra(getString(R.string.key_spotify_playback_track_single), mCurrentTrack);
                     i.putExtra(getString(R.string.key_track_list), mTracks);
                     sendBroadcast(i);
+                    break;
+                case ACTION_SHOW_NOTIFICATION:
+                    buildNotification();
+                    break;
+                case ACTION_HIDE_NOTIFICATION:
+                    clearNotification();
+                    break;
                 default:
                     break;
             }
@@ -339,6 +350,9 @@ public class PlaybackService extends Service implements
     }
 
     private void buildNotification() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        boolean show = prefs.getBoolean(getString(R.string.key_show_notification), true);
+        if(!show) return;
 
         if (android.os.Build.VERSION.SDK_INT > 20) {
             mMediaSessionCompat.setMetadata(new MediaMetadataCompat.Builder()
@@ -394,7 +408,8 @@ public class PlaybackService extends Service implements
     private void clearNotification() {
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(NOTIFICATION_ID);
+        stopForeground(true);
+        //notificationManager.cancel(NOTIFICATION_ID);
     }
 
     @Override public void onAudioFocusChange(int i) {

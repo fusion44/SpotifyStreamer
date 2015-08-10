@@ -12,4 +12,12 @@
             android:title="@string/title_language_preference" />
 
     </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/notification">
+        <CheckBoxPreference
+            android:key="@string/key_show_notification"
+            android:defaultValue="true"
+            android:title="@string/show_notification_on_playback"
+            android:summaryOff="@string/unstable_playback"/>
+    </PreferenceCategory>
 </PreferenceScreen>

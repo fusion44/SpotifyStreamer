@@ -1,5 +1,7 @@
 package net.malwasandres.spotifystreamer;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceFragment;
 import android.support.v7.app.AppCompatActivity;
@@ -27,13 +29,40 @@ public class StreamerPreferenceActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public static class StreamerPreferenceFragment extends PreferenceFragment {
+    public static class StreamerPreferenceFragment extends PreferenceFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
 
             // Load the preferences from an XML resource
             addPreferencesFromResource(R.xml.streamer_prefs);
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+            getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        }
+
+        @Override
+        public void onPause() {
+            getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+            super.onPause();
+        }
+
+        @Override
+        public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
+            if (key.equals(getString(R.string.key_show_notification))) {
+                if(!PlaybackService.isRunning()) return;
+
+                Intent i = new Intent(getActivity().getApplicationContext(), PlaybackService.class);
+                boolean show = prefs.getBoolean(getString(R.string.key_show_notification), true);
+
+                if (show) i.setAction(PlaybackService.ACTION_SHOW_NOTIFICATION);
+                else i.setAction(PlaybackService.ACTION_HIDE_NOTIFICATION);
+
+                getActivity().startService(i);
+            }
         }
     }
 }

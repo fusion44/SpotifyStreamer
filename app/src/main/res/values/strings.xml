@@ -24,6 +24,8 @@
     <string name="title_activity_preference">Preferences</string>
     <string name="dialog_title_country_list_preference">Available Countries</string>
     <string name="key_country_code">key_country_list_preference</string>
+    <string name="key_show_notification">key_show_notification_preference</string>
+    <string name="show_notification_on_playback">Show notification on playback</string>
     <string name="key_playback_position">key_playback_position</string>
     <string name="key_fragment_playback">KEY_FRAGMENT_PLAYBACK</string>
     <string name="action_share">Share Track</string>
@@ -31,4 +33,6 @@
     <string name="share_current_playing_track">Share current playing track</string>
     <string name="key_media_session">SPOTIFY_MEDIA_SESSION</string>
     <string name="open_play_activity">Playing</string>
+    <string name="notification">Notification</string>
+    <string name="unstable_playback">Might lead to unstable playback</string>
 </resources>

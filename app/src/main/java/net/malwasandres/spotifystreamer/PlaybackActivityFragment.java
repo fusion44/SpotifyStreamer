@@ -187,6 +187,8 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
     }
 
     private void setupUi() {
+        if(mCurrentTrack == null) return;
+
         mArtistNameTextView.setText(mCurrentTrack.artistName);
         mAlbumNameTextView.setText(mCurrentTrack.albumName);
         mTrackNameTextView.setText(mCurrentTrack.name);
