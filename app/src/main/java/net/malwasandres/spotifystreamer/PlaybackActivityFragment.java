@@ -260,6 +260,11 @@ public class PlaybackActivityFragment extends DialogFragment implements SeekBar.
         return v;
     }
 
+    @Override public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        setupUi();
+    }
+
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         getActivity().getMenuInflater().inflate(R.menu.menu_playback, menu);
